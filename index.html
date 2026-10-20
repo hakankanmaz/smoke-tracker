@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sigara Sayacı</title>
+<meta name="description" content="İçtiğin sigaraları tek dokunuşla kaydet, günlük sayını takip et.">
+<meta name="theme-color" content="#0f1714">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sigara">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  :root {
+    --bg: #0f1714;
+    --surface: #18221e;
+    --surface-2: #213029;
+    --text: #eef3f0;
+    --muted: #93a39b;
+    --accent: #4cc38a;
+    --accent-ink: #062014;
+    --warn: #f2b84b;
+    --danger: #ef6b5b;
+    --line: #2a3a33;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 100dvh;
+  }
+  main {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 32px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  header { display: flex; justify-content: space-between; align-items: center; }
+  header h1 { font-size: 17px; font-weight: 600; margin: 0; color: var(--muted); }
+  .icon-btn {
+    background: var(--surface); border: 0; color: var(--text);
+    width: 40px; height: 40px; border-radius: 12px; font-size: 18px; cursor: pointer;
+  }
+
+  .hero { text-align: center; padding: 8px 0 4px; }
+  .hero .label { color: var(--muted); font-size: 15px; }
+  .hero .count {
+    font-size: 96px; font-weight: 700; line-height: 1; margin: 6px 0 4px;
+    font-variant-numeric: tabular-nums; letter-spacing: -2px;
+  }
+  .hero .count small { font-size: 32px; color: var(--muted); font-weight: 500; letter-spacing: 0; }
+  .hero .count.over { color: var(--danger); }
+  .hero .count.near { color: var(--warn); }
+  .since { color: var(--muted); font-size: 15px; min-height: 20px; }
+  .since b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .progress { height: 8px; background: var(--surface); border-radius: 99px; overflow: hidden; }
+  .progress > div { height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; }
+  .progress.near > div { background: var(--warn); }
+  .progress.over > div { background: var(--danger); }
+
+  .log-btn {
+    border: 0; cursor: pointer; width: 100%;
+    background: var(--accent); color: var(--accent-ink);
+    font-size: 22px; font-weight: 700; padding: 26px 16px;
+    border-radius: 24px; box-shadow: 0 8px 24px rgba(76,195,138,.25);
+    transition: transform .08s;
+    touch-action: manipulation;
+  }
+  .log-btn:active { transform: scale(.97); }
+  .link-btn {
+    background: none; border: 0; color: var(--muted); font-size: 14px;
+    text-decoration: underline; cursor: pointer; padding: 4px; align-self: center;
+  }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat { background: var(--surface); border-radius: 14px; padding: 12px; text-align: center; }
+  .stat .v { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .k { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stat .d { font-size: 12px; margin-top: 2px; }
+  .good { color: var(--accent); } .bad { color: var(--danger); }
+
+  section.card { background: var(--surface); border-radius: var(--radius); padding: 16px; }
+  section.card h2 { font-size: 15px; margin: 0 0 12px; font-weight: 600; }
+  .chart { display: flex; align-items: flex-end; gap: 4px; height: 120px; position: relative; }
+  .chart .bar.under { background: #3d6b55; }
+  .chart .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+  .chart .bar { width: 100%; background: var(--surface-2); border-radius: 5px 5px 2px 2px; min-height: 2px; position: relative; }
+  .chart .bar.today { background: var(--accent); }
+  .chart .bar.over { background: var(--danger); }
+  .chart .num { font-size: 10px; color: var(--muted); margin-bottom: 3px; font-variant-numeric: tabular-nums; }
+  .chart-labels { display: flex; gap: 4px; margin-top: 6px; }
+  .chart-labels span { flex: 1; text-align: center; font-size: 10px; color: var(--muted); }
+  .limit-line { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--warn); opacity: .7; pointer-events: none; }
+
+  ul.entries { list-style: none; margin: 0; padding: 0; }
+  ul.entries li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums;
+  }
+  ul.entries li:first-child { border-top: 0; }
+  ul.entries .gap { color: var(--muted); font-size: 13px; margin-left: 8px; }
+  ul.entries button { background: none; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; padding: 4px 8px; }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 8px 0; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 20px);
+    transform: translateX(-50%) translateY(140%); visibility: hidden;
+    background: var(--text); color: var(--bg); border-radius: 14px;
+    padding: 12px 14px 12px 18px; display: flex; gap: 14px; align-items: center;
+    font-size: 15px; transition: transform .25s, visibility .25s; width: calc(100% - 32px); max-width: 448px;
+    justify-content: space-between; z-index: 10;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); visibility: visible; }
+  .toast button { background: none; border: 0; color: #1d7a50; font-weight: 700; font-size: 15px; cursor: pointer; }
+
+  dialog {
+    border: 0; border-radius: 22px; padding: 20px; background: var(--surface); color: var(--text);
+    width: calc(100% - 32px); max-width: 448px;
+  }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  dialog h2 { margin: 0 0 16px; font-size: 18px; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .field label { font-size: 14px; color: var(--muted); }
+  .field input {
+    background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px; font-size: 17px; width: 100%;
+  }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    flex: 1; border: 0; border-radius: 12px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer;
+    background: var(--surface-2); color: var(--text); min-width: 120px;
+  }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); }
+  .btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .hint { color: var(--muted); font-size: 13px; line-height: 1.4; margin: 0 0 16px; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="dateLabel">Bugün</h1>
+    <button class="icon-btn" id="openSettings" aria-label="Ayarlar">⚙︎</button>
+  </header>
+
+  <div class="hero">
+    <div class="label">Bugün içilen</div>
+    <div class="count" id="todayCount">0</div>
+    <div class="since" id="since"></div>
+  </div>
+
+  <div class="progress" id="progress" hidden><div id="progressFill"></div></div>
+
+  <button class="log-btn" id="logBtn">+ Sigara içtim</button>
+  <button class="link-btn" id="openBackfill">Kaydetmeyi unuttum, saat seç</button>
+
+  <div class="stats">
+    <div class="stat"><div class="v" id="statYesterday">0</div><div class="k">Dün</div><div class="d" id="statDiff"></div></div>
+    <div class="stat"><div class="v" id="statAvg7">0</div><div class="k">7 gün ort.</div></div>
+    <div class="stat"><div class="v" id="statBest">–</div><div class="k">En az (14 gün)</div></div>
+  </div>
+
+  <section class="card">
+    <h2>Son 14 gün</h2>
+    <div class="chart" id="chart"></div>
+    <div class="chart-labels" id="chartLabels"></div>
+  </section>
+
+  <section class="card">
+    <h2>Bugünün kayıtları</h2>
+    <ul class="entries" id="entries"></ul>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status"><span id="toastMsg"></span><button id="undoBtn">Geri al</button></div>
+
+<dialog id="backfillDialog">
+  <h2>Geçmiş kayıt ekle</h2>
+  <div class="field">
+    <label for="backfillTime">Ne zaman içtin?</label>
+    <input type="datetime-local" id="backfillTime">
+  </div>
+  <div class="row">
+    <button class="btn" data-close>Vazgeç</button>
+    <button class="btn primary" id="saveBackfill">Ekle</button>
+  </div>
+</dialog>
+
+<dialog id="settingsDialog">
+  <h2>Ayarlar</h2>
+  <div class="field">
+    <label for="limitInput">Günlük hedef (en fazla kaç sigara)</label>
+    <input type="number" id="limitInput" min="0" max="100" inputmode="numeric" placeholder="Örn. 10 — boş bırakırsan hedef yok">
+  </div>
+  <p class="hint">Hedefi her hafta 1 azaltmak, yavaş ama kalıcı bir bırakma yöntemidir.</p>
+  <div class="row">
+    <button class="btn primary" id="saveSettings">Kaydet</button>
+  </div>
+  <hr>
+  <p class="hint">Veriler sadece bu telefonda saklanır. Telefon değiştirirken ya da tarayıcı verisini silmeden önce yedek al.</p>
+  <div class="row">
+    <button class="btn" id="exportBtn">Yedeği indir</button>
+    <button class="btn" id="importBtn">Yedeği yükle</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+  </div>
+  <hr>
+  <div class="row">
+    <button class="btn danger" id="resetBtn">Tüm verileri sil</button>
+    <button class="btn" data-close>Kapat</button>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  const STORE_KEY = 'smoke-tracker:v1';
+  const DAY_NAMES = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+  const BAR_AREA = 100; // px of chart height available to bars (rest is for the number label)
+
+  // ---------- storage ----------
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        return {
+          entries: Array.isArray(d.entries) ? d.entries.filter(Number.isFinite).sort((a, b) => a - b) : [],
+          limit: Number.isFinite(d.limit) ? d.limit : null,
+        };
+      }
+    } catch (e) { /* fall through */ }
+    return { entries: [], limit: null };
+  }
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
+  }
+  let state = load();
+
+  // Ask the browser not to evict our data (best effort).
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+  // ---------- date helpers ----------
+  const dayKey = (t) => { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+  const startOfDay = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const addDays = (t, n) => { const d = new Date(t); d.setDate(d.getDate() + n); return d.getTime(); };
+  const fmtTime = (t) => new Date(t).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  function fmtDuration(ms) {
+    const min = Math.floor(ms / 60000);
+    if (min < 1) return 'az önce';
+    const d = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
+    if (d) return `${d}g ${h}s`;
+    if (h) return `${h}s ${m}dk`;
+    return `${m}dk`;
+  }
+  function countsByDay() {
+    const map = new Map();
+    for (const t of state.entries) map.set(dayKey(t), (map.get(dayKey(t)) || 0) + 1);
+    return map;
+  }
+
+  // ---------- render ----------
+  const $ = (id) => document.getElementById(id);
+
+  function render() {
+    const now = Date.now();
+    const today0 = startOfDay(now);
+    const counts = countsByDay();
+    const countFor = (t) => counts.get(dayKey(t)) || 0;
+    const today = countFor(now);
+    const yesterday = countFor(addDays(today0, -1));
+    const limit = state.limit;
+
+    $('dateLabel').textContent = new Date(now).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    const countEl = $('todayCount');
+    countEl.innerHTML = limit != null ? `${today}<small> / ${limit}</small>` : `${today}`;
+    countEl.classList.toggle('over', limit != null && today > limit);
+    countEl.classList.toggle('near', limit != null && today === limit);
+
+    const prog = $('progress');
+    if (limit != null && limit > 0) {
+      prog.hidden = false;
+      $('progressFill').style.width = Math.min(100, (today / limit) * 100) + '%';
+      prog.classList.toggle('over', today > limit);
+      prog.classList.toggle('near', today === limit);
+    } else {
+      prog.hidden = true;
+    }
+
+    renderSince(now);
+
+    $('statYesterday').textContent = yesterday;
+    const diff = today - yesterday;
+    const diffEl = $('statDiff');
+    if (state.entries.length === 0) { diffEl.textContent = ''; }
+    else if (diff < 0) { diffEl.textContent = `bugün ${-diff} az`; diffEl.className = 'd good'; }
+    else if (diff > 0) { diffEl.textContent = `bugün ${diff} fazla`; diffEl.className = 'd bad'; }
+    else { diffEl.textContent = 'aynı'; diffEl.className = 'd'; }
+
+    // 7-day average over the last 7 full days (excluding today), only counting days since first entry.
+    const first = state.entries.length ? startOfDay(state.entries[0]) : today0;
+    let sum = 0, n = 0;
+    for (let i = 1; i <= 7; i++) {
+      const t = addDays(today0, -i);
+      if (t < first) break;
+      sum += countFor(t); n++;
+    }
+    $('statAvg7').textContent = n ? (Math.round((sum / n) * 10) / 10).toLocaleString('tr-TR') : '–';
+
+    // Chart: last 14 days including today.
+    const days = [];
+    for (let i = 13; i >= 0; i--) { const t = addDays(today0, -i); days.push({ t, c: countFor(t), tracked: t >= first }); }
+    const tracked = days.filter((d) => d.tracked && d.t !== today0);
+    $('statBest').textContent = tracked.length ? Math.min(...tracked.map((d) => d.c)) : '–';
+
+    const max = Math.max(1, limit || 0, ...days.map((d) => d.c));
+    const chart = $('chart');
+    chart.innerHTML = '';
+    for (const d of days) {
+      const wrap = document.createElement('div');
+      wrap.className = 'bar-wrap';
+      const num = document.createElement('div');
+      num.className = 'num';
+      num.textContent = d.tracked ? d.c : '';
+      const bar = document.createElement('div');
+      bar.className = 'bar' + (d.t === today0 ? ' today' : '')
+        + (limit != null && d.c > limit ? ' over' : '')
+        + (limit != null && d.c <= limit && d.c > 0 && d.t !== today0 ? ' under' : '');
+      bar.style.height = Math.max(2, (d.c / max) * BAR_AREA) + 'px';
+      wrap.append(num, bar);
+      chart.append(wrap);
+    }
+    if (limit != null && limit > 0) {
+      const line = document.createElement('div');
+      line.className = 'limit-line';
+      line.style.bottom = (limit / max) * BAR_AREA + 'px';
+      chart.append(line);
+    }
+    $('chartLabels').innerHTML = days.map((d) => `<span>${d.t === today0 ? 'Bgn' : DAY_NAMES[new Date(d.t).getDay()]}</span>`).join('');
+
+    // Today's entries, newest first, with gap to previous cigarette.
+    const todays = state.entries.filter((t) => t >= today0);
+    const list = $('entries');
+    list.innerHTML = '';
+    if (!todays.length) {
+      list.innerHTML = '<li class="empty">Bugün henüz kayıt yok. Böyle devam! 💪</li>';
+    } else {
+      for (let i = todays.length - 1; i >= 0; i--) {
+        const t = todays[i];
+        const idx = state.entries.indexOf(t);
+        const prev = idx > 0 ? state.entries[idx - 1] : null;
+        const li = document.createElement('li');
+        const left = document.createElement('span');
+        left.innerHTML = `${fmtTime(t)}${prev ? `<span class="gap">+${t - prev < 60000 ? '<1dk' : fmtDuration(t - prev)} ara</span>` : ''}`;
+        const del = document.createElement('button');
+        del.textContent = '×';
+        del.setAttribute('aria-label', `${fmtTime(t)} kaydını sil`);
+        del.onclick = () => {
+          if (!confirm(`${fmtTime(t)} kaydı silinsin mi?`)) return;
+          const j = state.entries.indexOf(t);
+          if (j >= 0) state.entries.splice(j, 1);
+          save(); render();
+        };
+        li.append(left, del);
+        list.append(li);
+      }
+    }
+  }
+
+  function renderSince(now = Date.now()) {
+    const last = state.entries[state.entries.length - 1];
+    $('since').innerHTML = last != null ? `Son sigaradan beri <b>${fmtDuration(now - last)}</b>` : 'Henüz kayıt yok';
+  }
+
+  // ---------- actions ----------
+  function addEntry(t) {
+    state.entries.push(t);
+    state.entries.sort((a, b) => a - b);
+    save(); render();
+  }
+
+  let toastTimer, lastAdded = null;
+  function showToast(msg, undoable) {
+    $('toastMsg').textContent = msg;
+    $('undoBtn').hidden = !undoable;
+    $('toast').classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => $('toast').classList.remove('show'), 5000);
+  }
+
+  $('logBtn').onclick = () => {
+    const t = Date.now();
+    addEntry(t);
+    lastAdded = t;
+    if (navigator.vibrate) navigator.vibrate(30);
+    const c = countsByDay().get(dayKey(t));
+    showToast(`Kaydedildi · bugün ${c}. sigara`, true);
+  };
+  $('undoBtn').onclick = () => {
+    if (lastAdded != null) {
+      const j = state.entries.lastIndexOf(lastAdded);
+      if (j >= 0) state.entries.splice(j, 1);
+      lastAdded = null;
+      save(); render();
+    }
+    $('toast').classList.remove('show');
+  };
+
+  // Dialogs
+  document.querySelectorAll('[data-close]').forEach((b) => b.onclick = () => b.closest('dialog').close());
+  const toLocalInput = (t) => { const d = new Date(t); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+
+  $('openBackfill').onclick = () => {
+    $('backfillTime').value = toLocalInput(Date.now() - 30 * 60000);
+    $('backfillTime').max = toLocalInput(Date.now());
+    $('backfillDialog').showModal();
+  };
+  $('saveBackfill').onclick = () => {
+    const v = $('backfillTime').value;
+    const t = v ? new Date(v).getTime() : NaN;
+    if (!Number.isFinite(t) || t > Date.now()) { alert('Geçerli, geçmiş bir zaman seç.'); return; }
+    addEntry(t);
+    lastAdded = t;
+    $('backfillDialog').close();
+    showToast(`${fmtTime(t)} için kayıt eklendi`, true);
+  };
+
+  $('openSettings').onclick = () => {
+    $('limitInput').value = state.limit ?? '';
+    $('settingsDialog').showModal();
+  };
+  $('saveSettings').onclick = () => {
+    const v = $('limitInput').value.trim();
+    const n = v === '' ? null : Math.max(0, Math.floor(Number(v)));
+    state.limit = Number.isFinite(n) ? n : null;
+    save(); render();
+    $('settingsDialog').close();
+    showToast(state.limit != null ? `Günlük hedef: ${state.limit}` : 'Hedef kaldırıldı', false);
+  };
+  $('exportBtn').onclick = () => {
+    const blob = new Blob([JSON.stringify({ app: 'smoke-tracker', version: 1, ...state }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `sigara-yedek-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  $('importBtn').onclick = () => $('importFile').click();
+  $('importFile').onchange = async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const d = JSON.parse(await file.text());
+      if (!Array.isArray(d.entries)) throw new Error('bad file');
+      const entries = d.entries.filter(Number.isFinite);
+      if (!confirm(`${entries.length} kayıt yüklenecek ve mevcut verilerin yerini alacak. Devam?`)) return;
+      state = { entries: entries.sort((a, b) => a - b), limit: Number.isFinite(d.limit) ? d.limit : null };
+      save(); render();
+      $('settingsDialog').close();
+      showToast('Yedek yüklendi', false);
+    } catch (err) {
+      alert('Bu dosya okunamadı. Uygulamadan indirilen bir yedek dosyası seç.');
+    }
+  };
+  $('resetBtn').onclick = () => {
+    if (!confirm('Tüm kayıtlar kalıcı olarak silinecek. Emin misin?')) return;
+    state = { entries: [], limit: state.limit };
+    save(); render();
+    $('settingsDialog').close();
+  };
+
+  // Keep the "time since" and day rollover fresh.
+  let lastDay = dayKey(Date.now());
+  setInterval(() => {
+    const k = dayKey(Date.now());
+    if (k !== lastDay) { lastDay = k; render(); } else renderSince();
+  }, 15000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { state = load(); render(); } });
+
+  render();
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+})();
+</script>
+</body>
+</html>
