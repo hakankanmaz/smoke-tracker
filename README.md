@@ -9,6 +9,8 @@ Sigarayı bırakma yolculuğu için tek dokunuşluk sayaç. İçtiğin her sigar
 - **Günlük hedef:** Hedefe yaklaşınca sarı, aşınca kırmızı olur.
 - **İstatistikler:** Dün, son 7 günün ortalaması, son 14 günün en düşük günü.
 - **Son 14 gün grafiği** ve hedef çizgisi.
+- **Ortalama ara:** Sigaralar arası ortalama süre, uyanık olduğun saatlere göre hesaplanır. Kalkış ve yatış saatini ayarlardan değiştirebilirsin, varsayılan 06:30–00:00.
+- **Saatlere göre dağılım:** Bugün, dün ve son 7 gün için hangi saatlerde içtiğini gösterir. En yoğun saati ve uyku saatlerini işaretler.
 - **Unutulan kayıt:** Geçmiş bir saat için kayıt ekleyebilirsin. Yanlış kaydı listeden silebilirsin.
 - **Yedekleme:** Verileri JSON olarak indir ve geri yükle.
 - **Çevrimdışı çalışır**, telefon ana ekranına uygulama gibi eklenir.
@@ -18,7 +20,7 @@ Veriler sadece telefonunda, tarayıcının yerel deposunda tutulur. Hiçbir sunu
 ## Yayınlama (GitHub Pages)
 
 1. GitHub'da repo → **Settings → Pages**.
-2. **Source:** "Deploy from a branch", **Branch:** `main`, klasör `/ (root)` → **Save**.
+2. **Source:** "Deploy from a branch", **Branch:** `gh-pages`, klasör `/ (root)` → **Save**. Yeni sürüm yayınlamak için `main`'i `gh-pages` branch'ine push'la.
 3. Bir dakika sonra uygulama şu adreste açılır: `https://hakankanmaz.github.io/smoke-tracker/`
 
 ## Telefona kurulum
