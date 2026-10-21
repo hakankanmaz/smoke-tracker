@@ -516,6 +516,43 @@
   }
   const pad2 = (n) => String(n).padStart(2, '0');
 
+  // Awake window that starts on the calendar day of day0: [wake, wake + awakeLen).
+  function awakeWindowOf(day0) {
+    const d = new Date(day0);
+    d.setHours(0, toMin(state.wake), 0, 0);
+    const start = d.getTime();
+    return [start, start + awakeLen() * 60000];
+  }
+  const isAwakeAt = (t) => {
+    for (const k of [-1, 0]) {
+      const [ws, we] = awakeWindowOf(addDays(startOfDay(t), k));
+      if (t >= ws && t < we) return true;
+    }
+    return false;
+  };
+  // Milliseconds between a and b that fall inside awake hours. Sleep time is not counted.
+  function awakeBetween(a, b) {
+    if (b <= a) return 0;
+    let total = 0;
+    for (let day = addDays(startOfDay(a), -1); day <= b; day = addDays(day, 1)) {
+      const [ws, we] = awakeWindowOf(day);
+      total += Math.max(0, Math.min(we, b) - Math.max(ws, a));
+    }
+    return total;
+  }
+  // The moment when `ms` of awake time has passed since t (skips sleep hours).
+  function addAwake(t, ms) {
+    let left = ms;
+    for (let day = addDays(startOfDay(t), -1), i = 0; i < 400; day = addDays(day, 1), i++) {
+      const [ws, we] = awakeWindowOf(day);
+      const from = Math.max(ws, t);
+      if (we <= from) continue;
+      if (left <= we - from) return from + left;
+      left -= we - from;
+    }
+    return t + ms;
+  }
+
   function countsByDay() {
     const map = new Map();
     for (const t of state.entries) map.set(dayKey(t), (map.get(dayKey(t)) || 0) + 1);
@@ -631,7 +668,7 @@
         const prev = idx > 0 ? state.entries[idx - 1] : null;
         let gapHtml = '';
         if (prev != null) {
-          const gap = t - prev;
+          const gap = awakeBetween(prev, t);
           const cls = state.minGap ? (gap < state.minGap * 60000 ? ' early' : ' ok') : '';
           gapHtml = `<span class="gap${cls}">+${fmtGap(gap)} ara</span>`;
         }
@@ -806,7 +843,15 @@
 
   function renderSince(now = Date.now()) {
     const last = state.entries[state.entries.length - 1];
-    $('since').innerHTML = last != null ? `Son sigaradan beri <b>${fmtDuration(now - last)}</b>` : 'Henüz kayıt yok';
+    if (last == null) {
+      $('since').textContent = 'Henüz kayıt yok';
+    } else {
+      // Only awake time counts; say so when sleep hours were skipped.
+      const awake = awakeBetween(last, now);
+      const note = !isAwakeAt(now) ? ' <span class="note">· uyku saati, sayaç duruyor</span>'
+        : (now - last - awake >= 60000 ? ' <span class="note">· uyku hariç</span>' : '');
+      $('since').innerHTML = `Son sigaradan beri <b>${awake < 60000 && now - last >= 60000 ? '<1dk' : fmtDuration(awake)}</b>${note}`;
+    }
 
     // Average gap = time awake so far today / cigarettes today.
     const today = state.entries.filter((t) => t >= startOfDay(now)).length;
@@ -827,12 +872,13 @@
     const box = $('gapGoal');
     if (state.minGap && last != null) {
       const goalMs = state.minGap * 60000;
-      const target = last + goalMs;
+      const target = addAwake(last, goalMs); // sleep hours don't count toward the goal
       box.hidden = false;
       if (now < target) {
         box.classList.remove('done');
-        $('gapGoalText').innerHTML = `Sonraki sigara için en erken <b>${fmtTime(target)}</b> · ${fmtDuration(target - now + 59999)} kaldı`;
-        $('gapGoalFill').style.width = Math.min(100, ((now - last) / goalMs) * 100) + '%';
+        const day = startOfDay(target) > startOfDay(now) ? 'yarın ' : '';
+        $('gapGoalText').innerHTML = `Sonraki sigara için en erken <b>${day}${fmtTime(target)}</b> · ${fmtDuration(awakeBetween(now, target) + 59999)} kaldı`;
+        $('gapGoalFill').style.width = Math.min(100, (awakeBetween(last, now) / goalMs) * 100) + '%';
       } else {
         box.classList.add('done');
         $('gapGoalText').innerHTML = `<b>Hedef ara doldu ✓</b> · beklemeye devam edersen daha da iyi`;
@@ -918,7 +964,7 @@
   function earlyBy(t) {
     if (!state.minGap) return 0;
     const prev = state.entries.filter((x) => x < t).pop();
-    return prev == null ? 0 : Math.max(0, prev + state.minGap * 60000 - t);
+    return prev == null ? 0 : Math.max(0, state.minGap * 60000 - awakeBetween(prev, t));
   }
 
   let lastAdded = null; // { kind, t } for the toast's undo

@@ -13,7 +13,7 @@ Sigarayı bırakma yolculuğu için tek dokunuşluk sayaç. İçtiğin her sigar
 - **Saatlere göre dağılım:** Bugün, dün ve son 7 gün için hangi saatlerde içtiğini gösterir. En yoğun saati ve uyku saatlerini işaretler.
 - **Tetikleyiciler:** Her kayıttan sonra neden içtiğini listeden seçersin, birden fazla seçebilirsin. Liste ayarlardan düzenlenir, istediğin tetikleyiciyi ekleyip silebilirsin. "Tetikleyiciler" kartı son 7 günde hangi durumların seni sigaraya ittiğini gösterir. Bir kayda dokunarak etiketini sonradan değiştirebilirsin.
 - **Canım çekti, içmedim:** Direndiğin her isteği kaydeder ve tetikleyicisini sorar. Bugün kaç isteğe direndiğin üstte görünür.
-- **Hedef ara geri sayımı:** İki sigara arası en az kaç dakika olacağını ayarlarsın. Uygulama bir sonraki sigara için en erken saati ve kalan süreyi gösterir. Erken içilen sigaraların arası listede kırmızı görünür.
+- **Hedef ara geri sayımı:** İki sigara arası en az kaç dakika olacağını ayarlarsın. Uygulama bir sonraki sigara için en erken saati ve kalan süreyi gösterir. Erken içilen sigaraların arası listede kırmızı görünür. Sayaçlar ve aralar sadece uyanık olduğun saatleri sayar, uyku saatleri dahil edilmez.
 - **Paket süresi:** Son 7 günün ortalamasına göre 1 paketin kaç gün gittiğini ve ayda kaç paket içtiğini gösterir. Paketteki sigara sayısı ayarlardan değişir, varsayılan 20.
 - **Günü düzenle:** Son 14 gün grafiğinde bir güne dokunup o günün sayısını değiştirebilirsin. Sigaralar kalkış ve yatış saatin arasına eşit dağıtılır. Aynı saate toplu girilmiş bir günü düzeltmek için sayıyı değiştirmeden kaydetmen yeter.
 - **Unutulan kayıt:** Geçmiş bir saat için kayıt ekleyebilirsin. Yanlış kaydı listeden silebilirsin.
