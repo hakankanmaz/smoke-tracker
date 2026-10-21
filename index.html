@@ -114,6 +114,10 @@
   .stat .k { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .stat .d { font-size: 12px; margin-top: 2px; }
   .good { color: var(--accent); } .bad { color: var(--danger); }
+  .pack { background: var(--surface); border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+  .pack .ico { font-size: 28px; }
+  .pack .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pack .k { font-size: 13px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
 
   section.card { background: var(--surface); border-radius: var(--radius); padding: 16px; }
   section.card h2 { font-size: 15px; margin: 0 0 12px; font-weight: 600; }
@@ -264,6 +268,11 @@
     <div class="stat"><div class="v" id="statBest">–</div><div class="k">En az (14 gün)</div></div>
   </div>
 
+  <div class="pack" id="packCard">
+    <div class="ico">📦</div>
+    <div><div class="v" id="packDays"></div><div class="k" id="packSub"></div></div>
+  </div>
+
   <section class="card">
     <h2>Son 14 gün</h2>
     <div class="chart" id="chart"></div>
@@ -349,6 +358,10 @@
     <input type="number" id="minGapInput" min="0" max="1440" step="5" inputmode="numeric" placeholder="Örn. 90 — boş bırakırsan geri sayım yok">
   </div>
   <p class="hint">Hedefi her hafta 15 dakika uzatmak sayıyı kendiliğinden düşürür.</p>
+  <div class="field">
+    <label for="packSizeInput">Paketteki sigara sayısı</label>
+    <input type="number" id="packSizeInput" min="1" max="100" inputmode="numeric" placeholder="20">
+  </div>
   <div class="row">
     <button class="btn primary" id="saveSettings">Kaydet</button>
   </div>
@@ -425,6 +438,7 @@
       wake: validTime(d.wake) ? d.wake : DEFAULT_WAKE,
       sleep: validTime(d.sleep) ? d.sleep : DEFAULT_SLEEP,
       minGap: Number.isFinite(d.minGap) && d.minGap > 0 ? d.minGap : null,
+      packSize: Number.isFinite(d.packSize) && d.packSize > 0 ? d.packSize : 20,
       resisted: nums(d.resisted),
       tags: tagMap(d.tags),
       rtags: tagMap(d.rtags),
@@ -538,6 +552,7 @@
       sum += countFor(t); n++;
     }
     $('statAvg7').textContent = n ? (Math.round((sum / n) * 10) / 10).toLocaleString('tr-TR') : '–';
+    renderPack(n ? sum / n : null, n);
 
     // Chart: last 14 days including today.
     const days = [];
@@ -616,6 +631,23 @@
       };
       li.append(main, del);
       list.append(li);
+    }
+  }
+
+  // How long one pack lasts at the average daily pace of the last full days.
+  const fmt1 = (x) => (Math.round(x * 10) / 10).toLocaleString('tr-TR');
+  function renderPack(avg, days) {
+    const size = state.packSize;
+    if (avg == null) {
+      $('packDays').textContent = '1 paket ? gün';
+      $('packSub').textContent = 'Hesap için en az 1 tam günlük kayıt gerekli.';
+    } else if (avg === 0) {
+      $('packDays').textContent = 'Son günlerde paket açmadın 🎉';
+      $('packSub').textContent = `${days} günde hiç sigara yok.`;
+    } else {
+      $('packDays').textContent = `1 paket ≈ ${fmt1(size / avg)} gün`;
+      $('packSub').textContent = `Günde ort. ${fmt1(avg)} sigara · ${size} sigaralık paket · ayda ~${fmt1((avg * 30) / size)} paket`
+        + (days < 7 ? ` · son ${days} güne göre` : ' · son 7 güne göre');
     }
   }
 
@@ -928,6 +960,7 @@
     $('wakeInput').value = state.wake;
     $('sleepInput').value = state.sleep;
     $('minGapInput').value = state.minGap ?? '';
+    $('packSizeInput').value = state.packSize;
     $('askTriggerInput').checked = state.askTrigger;
     renderTriggerList();
     $('settingsDialog').showModal();
@@ -945,6 +978,8 @@
     const g = $('minGapInput').value.trim();
     const gn = g === '' ? null : Math.floor(Number(g));
     state.minGap = Number.isFinite(gn) && gn > 0 ? gn : null;
+    const ps = Math.floor(Number($('packSizeInput').value));
+    state.packSize = Number.isFinite(ps) && ps > 0 ? ps : 20;
     save(); render();
     $('settingsDialog').close();
     showToast(state.limit != null ? `Günlük hedef: ${state.limit}` : 'Hedef kaldırıldı', false);
