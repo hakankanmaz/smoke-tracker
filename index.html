@@ -123,7 +123,8 @@
   section.card h2 { font-size: 15px; margin: 0 0 12px; font-weight: 600; }
   .chart { display: flex; align-items: flex-end; gap: 4px; height: 120px; position: relative; }
   .chart .bar.under { background: #3d6b55; }
-  .chart .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+  .chart .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; cursor: pointer; }
+  .chart .bar-wrap.untracked { cursor: default; }
   .chart .bar { width: 100%; background: var(--surface-2); border-radius: 5px 5px 2px 2px; min-height: 2px; position: relative; }
   .chart .bar.today { background: var(--accent); }
   .chart .bar.over { background: var(--danger); }
@@ -277,6 +278,7 @@
     <h2>Son 14 gün</h2>
     <div class="chart" id="chart"></div>
     <div class="chart-labels" id="chartLabels"></div>
+    <button class="link-btn" id="openEditDay" style="display:block;margin:10px auto 0">Bir günün sayısını düzenle</button>
   </section>
 
   <section class="card">
@@ -308,6 +310,23 @@
 </main>
 
 <div class="toast" id="toast" role="status"><span id="toastMsg"></span><button id="undoBtn">Geri al</button></div>
+
+<dialog id="editDayDialog">
+  <h2>Günü düzenle</h2>
+  <div class="field">
+    <label for="editDayDate">Gün</label>
+    <input type="date" id="editDayDate">
+  </div>
+  <div class="field">
+    <label for="editDayCount">O gün içilen sigara</label>
+    <input type="number" id="editDayCount" min="0" max="200" inputmode="numeric" autofocus>
+  </div>
+  <p class="hint" id="editDayHint"></p>
+  <div class="row">
+    <button class="btn" data-close>Vazgeç</button>
+    <button class="btn primary" id="saveEditDay">Kaydet ve dağıt</button>
+  </div>
+</dialog>
 
 <dialog id="backfillDialog">
   <h2>Geçmiş kayıt ekle</h2>
@@ -565,7 +584,8 @@
     chart.innerHTML = '';
     for (const d of days) {
       const wrap = document.createElement('div');
-      wrap.className = 'bar-wrap';
+      wrap.className = 'bar-wrap' + (d.tracked ? '' : ' untracked');
+      wrap.onclick = () => openEditDay(d.t);
       const num = document.createElement('div');
       num.className = 'num';
       num.textContent = d.tracked ? d.c : '';
@@ -940,6 +960,70 @@
   // Dialogs
   document.querySelectorAll('[data-close]').forEach((b) => b.onclick = () => b.closest('dialog').close());
   const toLocalInput = (t) => { const d = new Date(t); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+
+  // ---------- edit a day's count ----------
+  const toDateInput = (t) => { const d = new Date(t); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
+  const fromDateInput = (v) => { const [y, m, d] = v.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
+  const dayItems = (day0) => state.entries.filter((t) => t >= day0 && t < addDays(day0, 1));
+
+  // Awake window for a calendar day, clipped to that day and, for today, to now.
+  function awakeWindow(day0, now = Date.now()) {
+    const dayEnd = addDays(day0, 1) - 60000;
+    const start = day0 + toMin(state.wake) * 60000;
+    let end = Math.min(start + awakeLen() * 60000, dayEnd);
+    if (day0 === startOfDay(now)) end = Math.min(end, now);
+    // Editing today before wake-up time: use midnight until now.
+    if (end <= start) return { start: day0, end: Math.max(day0 + 60000, Math.min(now, dayEnd)) };
+    return { start, end };
+  }
+  // n timestamps evenly spread over [start, end], each in the middle of its slot, rounded to the minute.
+  function spread(n, start, end) {
+    const out = [], slot = (end - start) / n;
+    for (let i = 0; i < n; i++) out.push(Math.round((start + slot * (i + 0.5)) / 60000) * 60000);
+    return out;
+  }
+
+  function updateEditDayHint() {
+    const v = $('editDayDate').value;
+    if (!v) return;
+    const day0 = fromDateInput(v);
+    const items = dayItems(day0);
+    const tagged = items.filter((t) => tagsFor('smoke', t).length).length;
+    const { start, end } = awakeWindow(day0);
+    $('editDayHint').textContent = `Şu an ${items.length} kayıt var. Kaydedince sigaralar ${fmtTime(start)}–${fmtTime(end)} arasına eşit dağıtılır.`
+      + (tagged ? ` O günün ${tagged} kaydındaki tetikleyiciler silinir.` : '');
+  }
+  function openEditDay(day0) {
+    const today0 = startOfDay(Date.now());
+    $('editDayDate').max = toDateInput(today0);
+    $('editDayDate').value = toDateInput(day0 ?? today0);
+    $('editDayCount').value = dayItems(day0 ?? today0).length;
+    updateEditDayHint();
+    $('editDayDialog').showModal();
+  }
+  $('openEditDay').onclick = () => openEditDay(state.entries.length ? startOfDay(state.entries[0]) : undefined);
+  $('editDayDate').onchange = () => {
+    const v = $('editDayDate').value;
+    if (v) $('editDayCount').value = dayItems(fromDateInput(v)).length;
+    updateEditDayHint();
+  };
+  $('saveEditDay').onclick = () => {
+    const v = $('editDayDate').value;
+    const n = Math.floor(Number($('editDayCount').value));
+    if (!v || fromDateInput(v) > Date.now()) { alert('Geçerli bir gün seç.'); return; }
+    if (!Number.isFinite(n) || n < 0 || n > 200) { alert('0 ile 200 arasında bir sayı gir.'); return; }
+    const day0 = fromDateInput(v);
+    const old = dayItems(day0);
+    for (const t of old) delete state.tags[String(t)];
+    state.entries = state.entries.filter((t) => t < day0 || t >= addDays(day0, 1));
+    const { start, end } = awakeWindow(day0);
+    state.entries.push(...(n ? spread(n, start, end) : []));
+    state.entries.sort((a, b) => a - b);
+    save(); render();
+    $('editDayDialog').close();
+    const label = new Date(day0).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+    showToast(`${label}: ${n} sigara, gün içine dağıtıldı`, false);
+  };
 
   $('openBackfill').onclick = () => {
     $('backfillTime').value = toLocalInput(Date.now() - 30 * 60000);
