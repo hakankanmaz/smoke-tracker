@@ -83,6 +83,31 @@
     text-decoration: underline; cursor: pointer; padding: 4px; align-self: center;
   }
 
+  .since .note { font-size: 13px; }
+  .hero .since + .since { margin-top: 2px; }
+
+  .card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .card-head h2 { margin: 0 !important; }
+  .seg { display: flex; background: var(--bg); border-radius: 10px; padding: 3px; }
+  .seg button {
+    background: none; border: 0; color: var(--muted); font-size: 13px; font-weight: 600;
+    padding: 6px 10px; border-radius: 8px; cursor: pointer;
+  }
+  .seg button.on { background: var(--surface-2); color: var(--text); }
+  .hchart { display: flex; align-items: flex-end; gap: 2px; height: 90px; }
+  .hchart .hcol { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; border-radius: 4px; }
+  .hchart .hcol.sleep { background: rgba(255,255,255,.03); }
+  .hchart .hbar { width: 100%; background: var(--accent); border-radius: 3px 3px 1px 1px; }
+  .hchart .hbar.zero { background: var(--surface-2); }
+  .hchart .hnum { font-size: 9px; color: var(--muted); margin-bottom: 2px; font-variant-numeric: tabular-nums; }
+  .hlabels { display: flex; gap: 2px; margin-top: 6px; }
+  .hlabels span { flex: 1; font-size: 10px; color: var(--muted); text-align: left; white-space: nowrap; overflow: visible; }
+  .hsummary { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 12px 0 0; }
+  .hsummary b { color: var(--text); font-weight: 600; }
+  .legend { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: rgba(255,255,255,.08); vertical-align: -1px; margin-right: 4px; }
+  .field-pair { display: flex; gap: 10px; }
+  .field-pair .field { flex: 1; min-width: 0; }
+
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .stat { background: var(--surface); border-radius: 14px; padding: 12px; text-align: center; }
   .stat .v { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -158,6 +183,7 @@
     <div class="label">Bugün içilen</div>
     <div class="count" id="todayCount">0</div>
     <div class="since" id="since"></div>
+    <div class="since" id="avgGap"></div>
   </div>
 
   <div class="progress" id="progress" hidden><div id="progressFill"></div></div>
@@ -175,6 +201,20 @@
     <h2>Son 14 gün</h2>
     <div class="chart" id="chart"></div>
     <div class="chart-labels" id="chartLabels"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Saatlere göre</h2>
+      <div class="seg" id="hourRange" role="tablist">
+        <button data-range="today" class="on">Bugün</button>
+        <button data-range="yesterday">Dün</button>
+        <button data-range="week">7 gün</button>
+      </div>
+    </div>
+    <div class="hchart" id="hourChart"></div>
+    <div class="hlabels" id="hourLabels"></div>
+    <p class="hsummary" id="hourSummary"></p>
   </section>
 
   <section class="card">
@@ -204,6 +244,17 @@
     <input type="number" id="limitInput" min="0" max="100" inputmode="numeric" placeholder="Örn. 10 — boş bırakırsan hedef yok">
   </div>
   <p class="hint">Hedefi her hafta 1 azaltmak, yavaş ama kalıcı bir bırakma yöntemidir.</p>
+  <div class="field-pair">
+    <div class="field">
+      <label for="wakeInput">Kalkış saati</label>
+      <input type="time" id="wakeInput">
+    </div>
+    <div class="field">
+      <label for="sleepInput">Yatış saati</label>
+      <input type="time" id="sleepInput">
+    </div>
+  </div>
+  <p class="hint">Sigaralar arası ortalama süre, uyanık olduğun saatlere göre hesaplanır.</p>
   <div class="row">
     <button class="btn primary" id="saveSettings">Kaydet</button>
   </div>
@@ -226,20 +277,30 @@
   const STORE_KEY = 'smoke-tracker:v1';
   const DAY_NAMES = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
   const BAR_AREA = 100; // px of chart height available to bars (rest is for the number label)
+  const HBAR_AREA = 74; // same for the hour chart
+  const DEFAULT_WAKE = '06:30';
+  const DEFAULT_SLEEP = '00:00';
+  const validTime = (v) => typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+
+  // Normalise any stored or imported object into the app's state shape.
+  function sanitize(d) {
+    return {
+      entries: Array.isArray(d.entries) ? d.entries.filter(Number.isFinite).sort((a, b) => a - b) : [],
+      limit: Number.isFinite(d.limit) ? d.limit : null,
+      wake: validTime(d.wake) ? d.wake : DEFAULT_WAKE,
+      sleep: validTime(d.sleep) ? d.sleep : DEFAULT_SLEEP,
+    };
+  }
 
   // ---------- storage ----------
   function load() {
     try {
       const raw = localStorage.getItem(STORE_KEY);
       if (raw) {
-        const d = JSON.parse(raw);
-        return {
-          entries: Array.isArray(d.entries) ? d.entries.filter(Number.isFinite).sort((a, b) => a - b) : [],
-          limit: Number.isFinite(d.limit) ? d.limit : null,
-        };
+        return sanitize(JSON.parse(raw));
       }
     } catch (e) { /* fall through */ }
-    return { entries: [], limit: null };
+    return sanitize({});
   }
   function save() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
@@ -262,6 +323,25 @@
     if (h) return `${h}s ${m}dk`;
     return `${m}dk`;
   }
+  const fmtGap = (ms) => (ms < 60000 ? '<1dk' : fmtDuration(ms));
+  const toMin = (s) => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
+  // Length of the awake window in minutes (handles a bedtime after midnight).
+  function awakeLen() {
+    const len = (toMin(state.sleep) - toMin(state.wake) + 1440) % 1440;
+    return len || 1440;
+  }
+  // Minutes awake so far today, counted from wake-up time and capped at bedtime.
+  function awakeElapsed(now) {
+    const d = new Date(now);
+    const e = d.getHours() * 60 + d.getMinutes() - toMin(state.wake);
+    return Math.max(0, Math.min(awakeLen(), e));
+  }
+  // An hour counts as "sleep" when its midpoint falls outside the awake window.
+  function isSleepHour(h) {
+    return ((h * 60 + 30 - toMin(state.wake) + 1440) % 1440) >= awakeLen();
+  }
+  const pad2 = (n) => String(n).padStart(2, '0');
+
   function countsByDay() {
     const map = new Map();
     for (const t of state.entries) map.set(dayKey(t), (map.get(dayKey(t)) || 0) + 1);
@@ -298,6 +378,7 @@
     }
 
     renderSince(now);
+    renderHours(now);
 
     $('statYesterday').textContent = yesterday;
     const diff = today - yesterday;
@@ -380,7 +461,83 @@
   function renderSince(now = Date.now()) {
     const last = state.entries[state.entries.length - 1];
     $('since').innerHTML = last != null ? `Son sigaradan beri <b>${fmtDuration(now - last)}</b>` : 'Henüz kayıt yok';
+
+    // Average gap = time awake so far today / cigarettes today.
+    const today = state.entries.filter((t) => t >= startOfDay(now)).length;
+    const awakeMs = awakeElapsed(now) * 60000;
+    const el = $('avgGap');
+    if (today && awakeMs > 0) {
+      el.innerHTML = `Ortalama ara <b>${fmtGap(awakeMs / today)}</b> <span class="note">· uyanık süreye göre</span>`;
+    } else if (!today && awakeMs > 0) {
+      el.innerHTML = `Uyanalı <b>${fmtDuration(awakeMs)}</b>, bugün henüz sigara yok`;
+    } else {
+      el.textContent = '';
+    }
   }
+
+  // ---------- hour breakdown ----------
+  let hourRange = 'today';
+  function renderHours(now = Date.now()) {
+    const today0 = startOfDay(now);
+    const first = state.entries.length ? startOfDay(state.entries[0]) : today0;
+    let from, to, days, awakeMin, title;
+    if (hourRange === 'today') {
+      from = today0; to = addDays(today0, 1); days = 1; awakeMin = awakeElapsed(now); title = 'Bugün';
+    } else if (hourRange === 'yesterday') {
+      from = addDays(today0, -1); to = today0; days = 1; awakeMin = awakeLen(); title = 'Dün';
+    } else {
+      // Last 7 full days (today excluded), but never before the first entry.
+      from = Math.max(addDays(today0, -7), first); to = today0;
+      days = Math.max(0, Math.round((to - from) / 86400000));
+      awakeMin = awakeLen() * days; title = days === 7 ? 'Son 7 gün' : `Son ${days} gün`;
+    }
+
+    const hours = new Array(24).fill(0);
+    let total = 0;
+    for (const t of state.entries) {
+      if (t >= from && t < to) { hours[new Date(t).getHours()]++; total++; }
+    }
+    const max = Math.max(1, ...hours);
+
+    const chart = $('hourChart');
+    chart.innerHTML = '';
+    hours.forEach((c, h) => {
+      const col = document.createElement('div');
+      col.className = 'hcol' + (isSleepHour(h) ? ' sleep' : '');
+      col.title = `${pad2(h)}:00–${pad2((h + 1) % 24)}:00 · ${c}`;
+      const num = document.createElement('div');
+      num.className = 'hnum';
+      num.textContent = c ? c : '';
+      const bar = document.createElement('div');
+      bar.className = 'hbar' + (c ? '' : ' zero');
+      bar.style.height = c ? Math.max(3, (c / max) * HBAR_AREA) + 'px' : '2px';
+      col.append(num, bar);
+      chart.append(col);
+    });
+    $('hourLabels').innerHTML = hours.map((_, h) => `<span>${h % 3 === 0 ? pad2(h) : ''}</span>`).join('');
+
+    const parts = [];
+    if (hourRange === 'week' && days === 0) {
+      parts.push('Henüz geçmiş gün yok. Yarın burada görünecek.');
+    } else if (!total) {
+      parts.push(`${title}: kayıt yok.`);
+    } else {
+      parts.push(`${title}: <b>${total}</b> sigara` + (days > 1 ? ` · günde ort. <b>${(Math.round((total / days) * 10) / 10).toLocaleString('tr-TR')}</b>` : ''));
+      if (awakeMin > 0) parts.push(`Ortalama ara <b>${fmtGap((awakeMin * 60000) / total)}</b> (uyanık ${state.wake}–${state.sleep})`);
+      const peak = hours.indexOf(Math.max(...hours));
+      if (hours[peak] >= 2) parts.push(`En yoğun saat <b>${pad2(peak)}:00–${pad2((peak + 1) % 24)}:00</b>`);
+    }
+    parts.push('<span class="legend"></span>uyku saatleri');
+    $('hourSummary').innerHTML = parts.join('<br>');
+  }
+
+  $('hourRange').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-range]');
+    if (!b) return;
+    hourRange = b.dataset.range;
+    $('hourRange').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    renderHours();
+  });
 
   // ---------- actions ----------
   function addEntry(t) {
@@ -437,12 +594,17 @@
 
   $('openSettings').onclick = () => {
     $('limitInput').value = state.limit ?? '';
+    $('wakeInput').value = state.wake;
+    $('sleepInput').value = state.sleep;
     $('settingsDialog').showModal();
   };
   $('saveSettings').onclick = () => {
     const v = $('limitInput').value.trim();
     const n = v === '' ? null : Math.max(0, Math.floor(Number(v)));
     state.limit = Number.isFinite(n) ? n : null;
+    const wake = $('wakeInput').value, sleep = $('sleepInput').value;
+    if (validTime(wake)) state.wake = wake;
+    if (validTime(sleep)) state.sleep = sleep;
     save(); render();
     $('settingsDialog').close();
     showToast(state.limit != null ? `Günlük hedef: ${state.limit}` : 'Hedef kaldırıldı', false);
@@ -465,7 +627,7 @@
       if (!Array.isArray(d.entries)) throw new Error('bad file');
       const entries = d.entries.filter(Number.isFinite);
       if (!confirm(`${entries.length} kayıt yüklenecek ve mevcut verilerin yerini alacak. Devam?`)) return;
-      state = { entries: entries.sort((a, b) => a - b), limit: Number.isFinite(d.limit) ? d.limit : null };
+      state = sanitize({ ...d, entries });
       save(); render();
       $('settingsDialog').close();
       showToast('Yedek yüklendi', false);
@@ -475,7 +637,7 @@
   };
   $('resetBtn').onclick = () => {
     if (!confirm('Tüm kayıtlar kalıcı olarak silinecek. Emin misin?')) return;
-    state = { entries: [], limit: state.limit };
+    state = { ...state, entries: [] };
     save(); render();
     $('settingsDialog').close();
   };

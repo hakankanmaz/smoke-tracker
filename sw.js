@@ -1,5 +1,5 @@
 // Offline cache. Bump VERSION whenever app files change so phones pick up the update.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = `smoke-tracker-${VERSION}`;
 const ASSETS = [
   './',
