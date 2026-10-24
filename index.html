@@ -235,6 +235,66 @@
   .check { display: flex; gap: 10px; align-items: center; font-size: 15px; margin-bottom: 8px; cursor: pointer; }
   .check input { width: 20px; height: 20px; accent-color: var(--accent); }
   h3.section { font-size: 15px; margin: 0 0 10px; }
+
+  /* tabs & views */
+  .tabs {
+    display: flex; gap: 4px; background: var(--surface); border-radius: 12px; padding: 4px;
+    position: sticky; top: calc(env(safe-area-inset-top) + 6px); z-index: 5; box-shadow: 0 6px 16px rgba(0,0,0,.35);
+  }
+  .tabs button { flex: 1; background: none; border: 0; color: var(--muted); font-size: 15px; font-weight: 600; padding: 10px 0; border-radius: 9px; cursor: pointer; }
+  .tabs button.on { background: var(--surface-2); color: var(--text); }
+  .view { display: flex; flex-direction: column; gap: 16px; }
+  .view[hidden] { display: none; }
+  .seg.wide button { flex: 1; padding: 8px 0; font-size: 14px; }
+
+  /* entries day navigation */
+  .daynav { display: flex; gap: 6px; }
+  .daynav button { background: var(--bg); border: 0; color: var(--text); width: 36px; height: 30px; border-radius: 8px; font-size: 18px; cursor: pointer; }
+  .daynav button:disabled { opacity: .3; cursor: default; }
+
+  /* analysis */
+  .an-text { font-size: 14px; line-height: 1.6; margin: 10px 0 0; }
+  .an-text .note, .an-foot { color: var(--muted); font-size: 12px; }
+  .an-foot { line-height: 1.5; margin: 10px 0 0; }
+  .legend-row { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .legend-row i { display: inline-block; width: 12px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+  .lg-bar { background: #3d6b55; } .lg-line { background: var(--warn); height: 3px !important; vertical-align: 2px !important; }
+  .lg-limit { border-top: 2px dashed var(--danger); height: 0 !important; vertical-align: 3px !important; }
+  .lg-base { background: #55655e; } .lg-exp { background: var(--accent); }
+  .c-bar { fill: #3d6b55; } .c-bar-today { fill: var(--accent); opacity: .45; } .c-bar-acc { fill: var(--accent); }
+  .c-bar-base { fill: #55655e; }
+  .c-line { fill: none; stroke: var(--warn); stroke-width: 2; stroke-linejoin: round; }
+  .c-limit { stroke: var(--danger); stroke-dasharray: 4 3; stroke-width: 1; opacity: .8; }
+  .c-mean { stroke-width: 1.5; stroke-dasharray: 3 3; }
+  .c-mean.b { stroke: #8a9b93; } .c-mean.e { stroke: var(--accent); }
+  .c-txt { fill: var(--muted); font-size: 9px; font-family: inherit; }
+  .c-cell { fill: var(--accent); } .c-cell0 { fill: var(--surface-2); }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .tile { background: var(--bg); border-radius: 10px; padding: 8px; text-align: center; }
+  .tile .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tile .v small { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .tile .k { font-size: 11px; color: var(--muted); }
+  .tbl-wrap { overflow-x: auto; margin-top: 10px; }
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .tbl th { text-align: right; color: var(--muted); font-weight: 600; font-size: 11px; padding: 0 4px 6px; white-space: nowrap; }
+  .tbl td { text-align: right; padding: 7px 4px; border-top: 1px solid var(--line); white-space: nowrap; }
+  .tbl th:first-child, .tbl td:first-child { text-align: left; }
+  .tbl tr.sum td { font-weight: 700; }
+  .tbl tr.muted td { color: var(--muted); }
+
+  /* experiments */
+  .field select {
+    background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px; font-size: 16px; width: 100%;
+  }
+  .exp-meta { color: var(--muted); font-size: 13px; margin: -6px 0 10px; line-height: 1.5; }
+  .verdict { font-size: 14px; font-weight: 600; margin: 12px 0; line-height: 1.5; }
+  .verdict.good { color: var(--accent); } .verdict.bad { color: var(--danger); } .verdict.neutral { color: var(--warn); }
+  .exp-banner {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px;
+    font-size: 14px; color: var(--muted); line-height: 1.5; cursor: pointer;
+  }
+  .exp-banner b { color: var(--text); }
 </style>
 </head>
 <body>
@@ -243,6 +303,15 @@
     <h1 id="dateLabel">Bugün</h1>
     <button class="icon-btn" id="openSettings" aria-label="Ayarlar">⚙︎</button>
   </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-view="today" class="on">Bugün</button>
+    <button data-view="analysis">Analiz</button>
+    <button data-view="exp">Deneyler</button>
+  </nav>
+
+  <div id="view-today" class="view">
+  <div class="exp-banner" id="expBanner" hidden></div>
 
   <div class="hero">
     <div class="label">Bugün içilen</div>
@@ -304,9 +373,58 @@
   </section>
 
   <section class="card">
-    <h2>Bugünün kayıtları</h2>
+    <div class="card-head">
+      <h2 id="entriesTitle">Bugünün kayıtları</h2>
+      <div class="daynav">
+        <button id="dayPrev" aria-label="Önceki gün">‹</button>
+        <button id="dayNext" aria-label="Sonraki gün">›</button>
+      </div>
+    </div>
     <ul class="entries" id="entries"></ul>
   </section>
+  </div>
+
+  <div id="view-analysis" class="view" hidden>
+    <div class="seg wide" id="anRange">
+      <button data-days="7" class="on">7 gün</button>
+      <button data-days="14">14 gün</button>
+      <button data-days="30">30 gün</button>
+    </div>
+    <section class="card"><h2>Trend</h2><div id="anTrend"></div></section>
+    <section class="card"><h2>Sigaralar arası süre</h2><div id="anGaps"></div></section>
+    <section class="card"><h2>Gün × saat</h2><div id="anHeat"></div></section>
+    <section class="card"><h2>Tetikleyici profili</h2><div id="anTriggers"></div></section>
+    <section class="card"><h2>Rutin metrikleri</h2><div id="anRoutine"></div></section>
+    <section class="card">
+      <h2>Ham veri</h2>
+      <p class="hint" id="anDataNote"></p>
+      <button class="btn" id="csvBtn" style="width:100%">CSV indir</button>
+    </section>
+  </div>
+
+  <div id="view-exp" class="view" hidden>
+    <section class="card">
+      <h2>Yeni deney</h2>
+      <div class="field">
+        <label for="expName">Hipotez</label>
+        <input id="expName" maxlength="90" placeholder="Örn. Carlos yürüyüşü sigarasız olursa sabah kümesi küçülür">
+      </div>
+      <div class="field">
+        <label for="expMetric">Ölçülecek metrik</label>
+        <select id="expMetric"></select>
+      </div>
+      <div class="field-pair">
+        <div class="field"><label for="expStart">Başlangıç</label><input type="date" id="expStart"></div>
+        <div class="field"><label for="expDays">Süre (gün)</label><input type="number" id="expDays" min="2" max="60" value="7" inputmode="numeric"></div>
+      </div>
+      <p class="hint">Sonuç, başlangıçtan önceki aynı uzunluktaki dönemle karşılaştırılır. Sadece tamamlanmış günler sayılır.</p>
+      <div class="row">
+        <button class="btn" id="expTemplate">Örnek: Carlos</button>
+        <button class="btn primary" id="expCreate">Deneyi başlat</button>
+      </div>
+    </section>
+    <div class="view" id="expList"></div>
+  </div>
 </main>
 
 <div class="toast" id="toast" role="status"><span id="toastMsg"></span><button id="undoBtn">Geri al</button></div>
@@ -463,6 +581,13 @@
       rtags: tagMap(d.rtags),
       triggers: triggerList(d.triggers),
       askTrigger: d.askTrigger !== false,
+      experiments: Array.isArray(d.experiments)
+        ? d.experiments.filter((e) => e && typeof e.name === 'string' && Number.isFinite(e.start) && Number.isFinite(e.days)
+          && ['count', 'first2h', 'late', 'auto', 'p50', 'first'].includes(e.metric))
+          .map((e) => ({ id: String(e.id || e.start), name: e.name, metric: e.metric, start: e.start, days: e.days }))
+        : [],
+      // Days whose times were estimated by "Günü düzenle" (YYYY-MM-DD).
+      spreadDays: Array.isArray(d.spreadDays) ? d.spreadDays.filter((x) => typeof x === 'string') : [],
     };
   }
 
@@ -644,20 +769,33 @@
 
     renderEntries(today0);
     renderTriggerStats(now);
+    renderExpBanner();
+    if (view === 'analysis') renderAnalysis();
+    else if (view === 'exp') renderExperiments();
   }
 
   // Today's cigarettes and resisted cravings, newest first. Tap a row to edit its triggers.
+  let viewDay = null; // null = today, otherwise the start of the day being browsed
   function renderEntries(today0) {
+    if (viewDay != null && viewDay >= today0) viewDay = null;
+    const day0 = viewDay ?? today0, day1 = addDays(day0, 1);
+    const inDay = (t) => t >= day0 && t < day1;
+    $('entriesTitle').textContent = day0 === today0 ? 'Bugünün kayıtları'
+      : day0 === addDays(today0, -1) ? 'Dünün kayıtları'
+      : new Date(day0).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+    $('dayNext').disabled = day0 === today0;
+    $('dayPrev').disabled = day0 <= trackedStart();
     const items = [
-      ...state.entries.filter((t) => t >= today0).map((t) => ({ kind: 'smoke', t })),
-      ...state.resisted.filter((t) => t >= today0).map((t) => ({ kind: 'resisted', t })),
+      ...state.entries.filter(inDay).map((t) => ({ kind: 'smoke', t })),
+      ...state.resisted.filter(inDay).map((t) => ({ kind: 'resisted', t })),
     ].sort((a, b) => b.t - a.t);
     const list = $('entries');
     list.innerHTML = '';
     if (!items.length) {
-      list.innerHTML = '<li class="empty">Bugün henüz kayıt yok. Böyle devam! 💪</li>';
+      list.innerHTML = day0 === today0 ? '<li class="empty">Bugün henüz kayıt yok. Böyle devam! 💪</li>' : '<li class="empty">Bu gün kayıt yok.</li>';
       return;
     }
+    if (isSpreadDay(day0)) list.innerHTML = '<li class="empty">~ Bu günün saatleri tahmini, eşit dağıtılmış. Saat bazlı analizlere katılmaz.</li>';
     for (const { kind, t } of items) {
       const li = document.createElement('li');
       const main = document.createElement('span');
@@ -977,6 +1115,8 @@
 
   $('logBtn').onclick = () => {
     const t = Date.now();
+    const lastT = state.entries[state.entries.length - 1];
+    if (lastT != null && t - lastT < 60000 && !confirm('Son kayıttan bu yana 1 dakika geçmedi. Yeni bir sigara olarak eklensin mi?')) return;
     const early = earlyBy(t);
     addEntry(t);
     const c = countsByDay().get(dayKey(t));
@@ -1064,6 +1204,9 @@
     state.entries = state.entries.filter((t) => t < day0 || t >= addDays(day0, 1));
     const { start, end } = awakeWindow(day0);
     state.entries.push(...(n ? spread(n, start, end) : []));
+    const key = toDateInput(day0);
+    state.spreadDays = state.spreadDays.filter((k) => k !== key);
+    if (n) state.spreadDays.push(key);
     state.entries.sort((a, b) => a - b);
     save(); render();
     $('editDayDialog').close();
@@ -1142,10 +1285,505 @@
   };
   $('resetBtn').onclick = () => {
     if (!confirm('Tüm kayıtlar kalıcı olarak silinecek. Emin misin?')) return;
-    state = { ...state, entries: [], resisted: [], tags: {}, rtags: {} };
+    state = { ...state, entries: [], resisted: [], tags: {}, rtags: {}, spreadDays: [], experiments: [] };
     save(); render();
     $('settingsDialog').close();
   };
+
+  // ================= analysis & experiments =================
+  function quantile(arr, q) {
+    if (!arr.length) return null;
+    const s = [...arr].sort((x, y) => x - y);
+    const pos = (s.length - 1) * q, lo = Math.floor(pos), hi = Math.ceil(pos);
+    return s[lo] + (s[hi] - s[lo]) * (pos - lo);
+  }
+  const median = (a) => quantile(a, 0.5);
+  const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+  function stdev(a) {
+    if (a.length < 2) return 0;
+    const m = mean(a);
+    return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1));
+  }
+  // Two-sided 95% critical values of Student's t.
+  function tCrit(df) {
+    const T = [[1, 12.71], [2, 4.3], [3, 3.18], [4, 2.78], [5, 2.57], [6, 2.45], [7, 2.36], [8, 2.31], [9, 2.26], [10, 2.23], [12, 2.18], [15, 2.13], [20, 2.09], [30, 2.04]];
+    for (const [d, v] of T) if (df <= d) return v;
+    return 1.96;
+  }
+  const fmtN = (x, digits = 1) => (x == null || !Number.isFinite(x) ? '–' : (Math.round(x * 10 ** digits) / 10 ** digits).toLocaleString('tr-TR'));
+  const fmtSigned = (x, digits = 1) => {
+    if (x == null || !Number.isFinite(x)) return '–';
+    const r = Math.round(x * 10 ** digits) / 10 ** digits;
+    return (r > 0 ? '+' : r < 0 ? '−' : '±') + Math.abs(r).toLocaleString('tr-TR');
+  };
+  const fmtClock = (min) => {
+    if (min == null) return '–';
+    const m = Math.round(min);
+    return `${pad2(Math.floor(m / 60) % 24)}:${pad2(m % 60)}`;
+  };
+  const fmtShort = (t) => new Date(t).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+  const DAY = 86400000;
+
+  function trackedStart() {
+    const firsts = [state.entries[0], state.resisted[0]].filter((x) => x != null);
+    return firsts.length ? startOfDay(Math.min(...firsts)) : startOfDay(Date.now());
+  }
+  const smokesOn = (day0) => state.entries.filter((t) => t >= day0 && t < addDays(day0, 1));
+  // Days whose times were estimated (spread evenly) are left out of time-of-day metrics.
+  // Flagged by "Günü düzenle", or detected when all gaps of a day are within 3 minutes of each other.
+  function isSpreadDay(day0, ts = smokesOn(day0)) {
+    if (state.spreadDays.includes(toDateInput(day0))) return true;
+    if (ts.length < 4) return false;
+    const g = ts.slice(1).map((t, i) => t - ts[i]);
+    return Math.max(...g) - Math.min(...g) <= 3 * 60000;
+  }
+
+  const AUTO_TRIGGERS = ['habit', 'bored'];
+  function dayMetrics(day0) {
+    const ts = smokesOn(day0);
+    const m = { day0, count: ts.length, spread: isSpreadDay(day0, ts), first: null, first2h: null, late: null, auto: null, p50: null, gaps: [] };
+    if (m.spread) return m;
+    m.gaps = ts.slice(1).map((t, i) => awakeBetween(ts[i], t) / 60000);
+    m.p50 = m.gaps.length ? median(m.gaps) : null;
+    m.late = ts.filter((t) => new Date(t).getHours() >= 21).length;
+    m.first2h = ts.filter((t) => t - ts[0] <= 2 * 3600000).length;
+    if (ts.length) { const f = new Date(ts[0]); m.first = f.getHours() * 60 + f.getMinutes(); }
+    const tagged = ts.filter((t) => tagsFor('smoke', t).length);
+    if (tagged.length) {
+      m.auto = (tagged.filter((t) => tagsFor('smoke', t).some((id) => AUTO_TRIGGERS.includes(id))).length / tagged.length) * 100;
+    }
+    return m;
+  }
+
+  // Metrics that can be tracked per day and used in experiments.
+  const METRICS = {
+    count: { label: 'Günlük sigara', better: 'down', fmt: (v) => fmtN(v), unit: '' },
+    first2h: { label: 'İlk 2 saatteki sigara', better: 'down', fmt: (v) => fmtN(v), unit: '' },
+    late: { label: '21:00 sonrası sigara', better: 'down', fmt: (v) => fmtN(v), unit: '' },
+    auto: { label: 'Otomatik sigara payı', better: 'down', fmt: (v) => (v == null ? '–' : '%' + fmtN(v, 0)), unit: ' puan' },
+    p50: { label: 'Medyan ara', better: 'up', fmt: (v) => (v == null ? '–' : fmtN(v, 0) + ' dk'), unit: ' dk' },
+    first: { label: 'İlk sigara saati', better: 'up', fmt: fmtClock, unit: ' dk' },
+  };
+  const isGood = (key, diff) => (METRICS[key].better === 'down' ? diff < 0 : diff > 0);
+
+  const svg = (w, h, inner) => `<svg viewBox="0 0 ${w} ${h}" width="100%" style="display:block;overflow:visible" aria-hidden="true">${inner}</svg>`;
+  function rangeDays(n, today0) {
+    const out = [];
+    for (let d = Math.max(addDays(today0, -(n - 1)), trackedStart()); d <= today0; d = addDays(d, 1)) out.push(d);
+    return out;
+  }
+
+  // ---------- views ----------
+  let view = 'today', anDays = 7;
+  function showView(v) {
+    view = v;
+    $('tabs').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.view === v));
+    for (const id of ['today', 'analysis', 'exp']) $('view-' + id).hidden = id !== v;
+    if (v === 'analysis') renderAnalysis();
+    if (v === 'exp') renderExperiments();
+    window.scrollTo(0, 0);
+  }
+  $('tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-view]');
+    if (b) showView(b.dataset.view);
+  });
+  $('anRange').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-days]');
+    if (!b) return;
+    anDays = Number(b.dataset.days);
+    $('anRange').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    renderAnalysis();
+  });
+  $('dayPrev').onclick = () => { const t0 = startOfDay(Date.now()); viewDay = addDays(viewDay ?? t0, -1); renderEntries(t0); };
+  $('dayNext').onclick = () => { const t0 = startOfDay(Date.now()); viewDay = addDays(viewDay ?? t0, 1); renderEntries(t0); };
+
+  // ---------- analysis ----------
+  function renderAnalysis() {
+    const today0 = startOfDay(Date.now());
+    const days = rangeDays(anDays, today0).map(dayMetrics);
+    const prevDays = [];
+    for (let i = 1; i <= anDays; i++) {
+      const d = addDays(days[0].day0, -i);
+      if (d < trackedStart()) break;
+      prevDays.unshift(dayMetrics(d));
+    }
+    renderTrend(days, prevDays, today0);
+    renderGapCard(days, prevDays, today0);
+    renderHeatmap(days, today0);
+    renderTriggerProfile(days);
+    renderRoutine(days, prevDays, today0);
+    const spreadN = days.filter((d) => d.spread).length;
+    const span = Math.round((today0 - trackedStart()) / DAY) + 1;
+    $('anDataNote').innerHTML = `Toplam ${state.entries.length} sigara ve ${state.resisted.length} direnilen istek, ${span} gün.`
+      + (spreadN ? ` Bu dönemde ${spreadN} günün saatleri tahmini (~), saat bazlı metriklere katılmadı.` : '')
+      + ' CSV her kaydı tarih, saat, tür ve tetikleyicilerle verir. Sheets veya Grafana\'ya doğrudan yüklenebilir.';
+  }
+
+  function renderTrend(days, prevDays, today0) {
+    const counts = countsByDay();
+    const cnt = (t) => counts.get(dayKey(t)) || 0;
+    const tracked = trackedStart();
+    // Today is still in progress, so the moving average stops at yesterday.
+    const ma = days.map((d) => {
+      if (d.day0 >= today0) return null;
+      const w = [];
+      for (let i = 0; i < 7; i++) { const t = addDays(d.day0, -i); if (t < tracked) break; w.push(cnt(t)); }
+      return mean(w);
+    });
+    const n = days.length, W = 340, H = 150, top = 16, bottom = 18, ch = H - top - bottom, bw = W / n;
+    const max = Math.max(1, state.limit || 0, ...days.map((d) => d.count), ...ma.filter((v) => v != null));
+    const y = (v) => top + ch * (1 - v / max);
+    const every = n <= 7 ? 1 : n <= 14 ? 2 : 5;
+    let g = '';
+    days.forEach((d, i) => {
+      const x = i * bw + bw * 0.15, w = bw * 0.7, isToday = d.day0 === today0;
+      g += `<rect class="${isToday ? 'c-bar-today' : 'c-bar'}" x="${x}" y="${y(d.count)}" width="${w}" height="${Math.max(0, top + ch - y(d.count))}" rx="2"/>`;
+      if (n <= 14) g += `<text class="c-txt" x="${x + w / 2}" y="${y(d.count) - 3}" text-anchor="middle">${d.count}</text>`;
+      if ((n - 1 - i) % every === 0) g += `<text class="c-txt" x="${x + w / 2}" y="${H - 4}" text-anchor="middle">${isToday ? 'Bgn' : new Date(d.day0).getDate()}</text>`;
+    });
+    const pts = ma.map((v, i) => (v == null ? null : `${i * bw + bw / 2},${y(v)}`)).filter(Boolean);
+    if (pts.length > 1) g += `<polyline class="c-line" points="${pts.join(' ')}"/>`;
+    if (state.limit) g += `<line class="c-limit" x1="0" x2="${W}" y1="${y(state.limit)}" y2="${y(state.limit)}"/>`;
+
+    // Linear trend over complete days only, with a 95% interval for the slope.
+    const comp = days.filter((d) => d.day0 < today0);
+    let text;
+    if (comp.length < 3) {
+      text = 'Eğim için en az 3 tamamlanmış gün gerek.';
+    } else {
+      const xs = comp.map((_, i) => i), ys = comp.map((d) => d.count);
+      const mx = mean(xs), my = mean(ys);
+      const sxx = xs.reduce((s, x) => s + (x - mx) ** 2, 0);
+      const b = xs.reduce((s, x, i) => s + (x - mx) * (ys[i] - my), 0) / sxx;
+      const a = my - b * mx;
+      const sse = ys.reduce((s, v, i) => s + (v - (a + b * xs[i])) ** 2, 0);
+      const se = Math.sqrt(sse / (comp.length - 2) / sxx);
+      const tc = tCrit(comp.length - 2), lo = b - tc * se, hi = b + tc * se;
+      text = `Eğim: günde <b>${fmtSigned(b)}</b> sigara <span class="note">· %95 aralık ${fmtSigned(lo)} … ${fmtSigned(hi)} · ${comp.length} güne göre</span>`;
+      const yLast = a + b * (comp.length - 1);
+      if (hi < 0 && yLast > 2) {
+        const target = Math.max(1, Math.floor(yLast / 2));
+        const when = new Date(addDays(comp[comp.length - 1].day0, Math.ceil((target - yLast) / b)))
+          .toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+        text += `<br>Bu eğim sürerse günde ${target} sigaraya yaklaşık <b>${when}</b> civarı inersin. <span class="note">Doğrusal tahmin.</span>`;
+      } else if (lo > 0) {
+        text += '<br>Sayı istatistiksel olarak artıyor.';
+      } else {
+        text += '<br>Eğim henüz sıfırdan ayırt edilemiyor, değişim gürültü içinde.';
+      }
+    }
+    const cur = mean(comp.map((d) => d.count)), prev = mean(prevDays.map((d) => d.count));
+    if (cur != null && prev != null) {
+      text += `<br>Günlük ortalama <b>${fmtN(cur)}</b> · önceki ${prevDays.length} gün ${fmtN(prev)} <span class="note">(${fmtSigned(cur - prev)})</span>`;
+    }
+    $('anTrend').innerHTML = svg(W, H, g)
+      + `<div class="legend-row"><span><i class="lg-bar"></i>günlük</span><span><i class="lg-line"></i>7 gün ort.</span>${state.limit ? '<span><i class="lg-limit"></i>hedef</span>' : ''}</div>`
+      + `<p class="an-text">${text}</p>`;
+  }
+
+  const GAP_BINS = [[0, 30, '<30'], [30, 60, '30–60'], [60, 90, '60–90'], [90, 120, '90–120'], [120, 180, '2–3 s'], [180, Infinity, '3 s+']];
+  function renderGapCard(days, prevDays, today0) {
+    const gaps = days.flatMap((d) => d.gaps), prevGaps = prevDays.flatMap((d) => d.gaps);
+    if (!gaps.length) {
+      $('anGaps').innerHTML = '<p class="hint" style="margin:0">Bu dönemde aynı gün içinde en az iki sigara yok.</p>';
+      return;
+    }
+    const goal = state.minGap;
+    const counts = GAP_BINS.map(([lo, hi]) => gaps.filter((x) => x >= lo && x < hi).length);
+    const W = 340, H = 120, top = 16, bottom = 18, ch = H - top - bottom, bw = W / GAP_BINS.length, max = Math.max(1, ...counts);
+    let g = '';
+    counts.forEach((c, i) => {
+      const x = i * bw + bw * 0.12, w = bw * 0.76, h = (c / max) * ch;
+      g += `<rect class="${goal && GAP_BINS[i][0] >= goal ? 'c-bar-acc' : 'c-bar'}" x="${x}" y="${top + ch - h}" width="${w}" height="${h}" rx="2"/>`;
+      g += `<text class="c-txt" x="${x + w / 2}" y="${top + ch - h - 3}" text-anchor="middle">${c}</text>`;
+      g += `<text class="c-txt" x="${x + w / 2}" y="${H - 4}" text-anchor="middle">${GAP_BINS[i][2]}</text>`;
+    });
+    let html = svg(W, H, g) + '<div class="tiles">'
+      + [['p10', 0.1], ['p50 · medyan', 0.5], ['p90', 0.9]].map(([k, q]) => `<div class="tile"><div class="v">${fmtN(quantile(gaps, q), 0)}<small> dk</small></div><div class="k">${k}</div></div>`).join('')
+      + '</div>';
+    const lines = [`${gaps.length} ara, sadece uyanık süre sayılır.`];
+    if (goal) lines.push(`Hedef ara (${goal} dk) ve üstü: <b>%${fmtN((gaps.filter((x) => x >= goal).length / gaps.length) * 100, 0)}</b>`);
+    if (prevGaps.length >= 3) lines.push(`Medyan ara önceki döneme göre <b>${fmtSigned(median(gaps) - median(prevGaps), 0)} dk</b>`);
+    const rows = [], tracked = trackedStart();
+    for (let k = 0; k < 4; k++) {
+      const end = addDays(today0, -7 * k);
+      if (end < tracked) break;
+      const gs = [];
+      for (let d = addDays(end, -6); d <= end; d = addDays(d, 1)) if (d >= tracked) gs.push(...dayMetrics(d).gaps);
+      rows.push(`<tr><td>${k === 0 ? 'Son 7 gün' : k + ' hafta önce'}</td><td>${fmtN(quantile(gs, 0.1), 0)}</td><td>${fmtN(quantile(gs, 0.5), 0)}</td><td>${fmtN(quantile(gs, 0.9), 0)}</td><td>${gs.length}</td></tr>`);
+    }
+    html += `<p class="an-text">${lines.join('<br>')}</p>`
+      + `<div class="tbl-wrap"><table class="tbl"><tr><th>Haftalık (dk)</th><th>p10</th><th>p50</th><th>p90</th><th>n</th></tr>${rows.join('')}</table></div>`;
+    $('anGaps').innerHTML = html;
+  }
+
+  const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+  function renderHeatmap(days, today0) {
+    const grid = WEEK_ORDER.map(() => new Array(24).fill(0)), nDays = WEEK_ORDER.map(() => 0);
+    for (const d of days) {
+      if (d.spread) continue;
+      const r = WEEK_ORDER.indexOf(new Date(d.day0).getDay());
+      nDays[r]++;
+      for (const t of smokesOn(d.day0)) grid[r][new Date(t).getHours()]++;
+    }
+    const avg = grid.map((row, r) => row.map((c) => (nDays[r] ? c / nDays[r] : null)));
+    const max = Math.max(0.0001, ...avg.flat().filter((v) => v != null));
+    const W = 340, lw = 30, cw = (W - lw) / 24, rh = 18, H = 7 * rh + 14;
+    let g = '', best = null;
+    avg.forEach((row, r) => {
+      g += `<text class="c-txt" x="0" y="${r * rh + rh / 2 + 3}">${DAY_NAMES[WEEK_ORDER[r]]}</text>`;
+      row.forEach((v, h) => {
+        if (v == null) return;
+        const x = lw + h * cw;
+        g += `<rect class="${v ? 'c-cell' : 'c-cell0'}" x="${x + 0.5}" y="${r * rh + 1}" width="${cw - 1}" height="${rh - 2}" rx="2"${v ? ` style="fill-opacity:${(0.18 + 0.82 * (v / max)).toFixed(2)}"` : ''}/>`;
+        if (v && (!best || v > best.v)) best = { v, r, h };
+      });
+    });
+    for (let h = 0; h < 24; h += 3) g += `<text class="c-txt" x="${lw + h * cw}" y="${H - 1}">${pad2(h)}</text>`;
+    const comp = days.filter((d) => d.day0 < today0);
+    const wk = comp.filter((d) => { const w = new Date(d.day0).getDay(); return w >= 1 && w <= 5; }).map((d) => d.count);
+    const we = comp.filter((d) => { const w = new Date(d.day0).getDay(); return w === 0 || w === 6; }).map((d) => d.count);
+    const lines = ['Koyu hücre: o gün ve saatte gün başına daha çok sigara.'];
+    if (best) lines.push(`En yoğun: <b>${DAY_NAMES[WEEK_ORDER[best.r]]} ${pad2(best.h)}:00–${pad2((best.h + 1) % 24)}:00</b> <span class="note">(gün başına ${fmtN(best.v)})</span>`);
+    if (wk.length && we.length) lines.push(`Hafta içi ort. <b>${fmtN(mean(wk))}</b> · hafta sonu ort. <b>${fmtN(mean(we))}</b>`);
+    $('anHeat').innerHTML = svg(W, H, g) + `<p class="an-text">${lines.join('<br>')}</p>`;
+  }
+
+  function renderTriggerProfile(days) {
+    const from = days[0].day0, to = addDays(days[days.length - 1].day0, 1);
+    const E = state.entries, rows = new Map();
+    const row = (id) => { if (!rows.has(id)) rows.set(id, { n: 0, gaps: [], hours: new Array(24).fill(0), res: 0 }); return rows.get(id); };
+    let tagged = 0, total = 0;
+    E.forEach((t, i) => {
+      if (t < from || t >= to) return;
+      total++;
+      const ids = tagsFor('smoke', t);
+      if (ids.length) tagged++;
+      const gap = i > 0 ? awakeBetween(E[i - 1], t) / 60000 : null;
+      for (const id of ids) {
+        const r = row(id);
+        r.n++;
+        if (gap != null) r.gaps.push(gap);
+        r.hours[new Date(t).getHours()]++;
+      }
+    });
+    for (const t of state.resisted) if (t >= from && t < to) for (const id of tagsFor('resisted', t)) row(id).res++;
+    if (!rows.size) {
+      $('anTriggers').innerHTML = '<p class="hint" style="margin:0">Bu dönemde etiketli kayıt yok.</p>';
+      return;
+    }
+    const list = [...rows.entries()].sort((a, b) => b[1].n - a[1].n || b[1].res - a[1].res);
+    const body = list.map(([id, r]) => {
+      const tr = triggerById(id);
+      const peak = r.n ? r.hours.indexOf(Math.max(...r.hours)) : null;
+      return `<tr><td>${tr.emoji} ${escapeHtml(tr.label)}</td><td>${r.n}</td><td>${tagged && r.n ? '%' + fmtN((r.n / tagged) * 100, 0) : '–'}</td>`
+        + `<td>${r.gaps.length ? fmtN(median(r.gaps), 0) + ' dk' : '–'}</td><td>${peak == null ? '–' : pad2(peak) + ':00'}</td><td>${r.res || ''}</td></tr>`;
+    }).join('');
+    const strongest = list.filter(([, r]) => r.gaps.length >= 2).sort((a, b) => median(a[1].gaps) - median(b[1].gaps))[0];
+    const weakest = list.filter(([, r]) => r.gaps.length >= 2).sort((a, b) => median(b[1].gaps) - median(a[1].gaps))[0];
+    const notes = [`Etiketli: ${tagged}/${total} sigara.`];
+    if (strongest && weakest && strongest[0] !== weakest[0]) {
+      notes.push(`En güçlü istek <b>${escapeHtml(triggerById(strongest[0]).label)}</b> (önceki ara ${fmtN(median(strongest[1].gaps), 0)} dk), en zayıf <b>${escapeHtml(triggerById(weakest[0]).label)}</b> (${fmtN(median(weakest[1].gaps), 0)} dk).`);
+    }
+    $('anTriggers').innerHTML = `<div class="tbl-wrap"><table class="tbl"><tr><th>Tetikleyici</th><th>n</th><th>Pay</th><th>Önceki ara</th><th>Saat</th><th>💪</th></tr>${body}</table></div>`
+      + `<p class="an-text">${notes.join('<br>')}</p>`
+      + '<p class="an-foot">Önceki ara: o sigaradan önce geçen uyanık süre, medyan. Kısa ara güçlü istek demek. Saat: en sık görüldüğü saat. 💪 direnilen istek.</p>';
+  }
+
+  function renderRoutine(days, prevDays, today0) {
+    const keys = ['count', 'first', 'first2h', 'late', 'auto', 'p50'];
+    const cellFmt = { count: (v) => fmtN(v), first: fmtClock, first2h: (v) => fmtN(v), late: (v) => fmtN(v), auto: (v) => (v == null ? '–' : '%' + fmtN(v, 0)), p50: (v) => fmtN(v, 0) };
+    const cell = (d, k) => (d.spread && k !== 'count' ? '~' : cellFmt[k](d[k]));
+    const avgOf = (list, k) => mean(list.map((d) => d[k]).filter((v) => v != null));
+    const comp = days.filter((d) => d.day0 < today0);
+    let body = [...days].reverse().map((d) => {
+      const isToday = d.day0 === today0;
+      return `<tr${isToday ? ' class="muted"' : ''}><td>${isToday ? 'Bugün*' : DAY_NAMES[new Date(d.day0).getDay()] + ' ' + new Date(d.day0).getDate()}${d.spread ? ' ~' : ''}</td>${keys.map((k) => `<td>${cell(d, k)}</td>`).join('')}</tr>`;
+    }).join('');
+    const avgRow = (label, list, cls = 'sum') => `<tr class="${cls}"><td>${label}</td>${keys.map((k) => `<td>${cellFmt[k](avgOf(list, k))}</td>`).join('')}</tr>`;
+    if (comp.length) body += avgRow('Ortalama', comp);
+    if (prevDays.length) {
+      body += avgRow('Önceki', prevDays, 'muted');
+      body += `<tr><td>Fark</td>${keys.map((k) => {
+        const a = avgOf(comp, k), b = avgOf(prevDays, k);
+        if (a == null || b == null) return '<td>–</td>';
+        const diff = a - b;
+        return `<td class="${diff === 0 ? '' : isGood(k, diff) ? 'good' : 'bad'}">${fmtSigned(diff, k === 'count' || k === 'first2h' || k === 'late' ? 1 : 0)}</td>`;
+      }).join('')}</tr>`;
+    }
+    $('anRoutine').innerHTML = `<div class="tbl-wrap"><table class="tbl"><tr><th>Gün</th><th>Sayı</th><th>İlk</th><th>İlk 2s</th><th>21+</th><th>Oto</th><th>p50</th></tr>${body}</table></div>`
+      + '<p class="an-foot">İlk 2s: ilk sigaradan sonraki 2 saatte içilen, ilki dahil. 21+: 21:00 sonrası. Oto: Alışkanlık ve Sıkılma etiketli sigaraların etiketlilere oranı. p50: gün içi medyan ara, dk. * Bugün devam ediyor, ortalamalara katılmaz. ~ saatleri tahmini gün. Fark: yeşil iyi yönde.</p>';
+  }
+
+  // ---------- CSV export ----------
+  $('csvBtn').onclick = () => {
+    const spread = new Map();
+    const isSpread = (t) => { const d = startOfDay(t); if (!spread.has(d)) spread.set(d, isSpreadDay(d)); return spread.get(d); };
+    const items = [...state.entries.map((t) => ['smoke', t]), ...state.resisted.map((t) => ['resisted', t])].sort((a, b) => a[1] - b[1]);
+    const rows = [['tarih', 'saat', 'tur', 'tetikleyiciler', 'tahmini_saat', 'unix_ms']];
+    for (const [kind, t] of items) {
+      rows.push([toDateInput(t), fmtTime(t), kind === 'smoke' ? 'sigara' : 'direnildi',
+        tagsFor(kind, t).map((id) => triggerById(id).label).join('|'), kind === 'smoke' && isSpread(t) ? 'evet' : 'hayir', t]);
+    }
+    const esc = (v) => (/[",\n;]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+    const csv = '﻿' + rows.map((r) => r.map(esc).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = `sigara-veri-${toDateInput(Date.now())}.csv`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+
+  // ---------- experiments ----------
+  const expStatus = (e, today0) => (today0 < e.start ? 'planned' : today0 < addDays(e.start, e.days) ? 'running' : 'done');
+  // Completed days inside the experiment vs. the same number of days right before it.
+  function expData(e, today0) {
+    const tracked = trackedStart(), base = [], exp = [];
+    for (let i = 0; i < e.days; i++) {
+      const d = addDays(e.start, i);
+      if (d >= today0) break;
+      const v = dayMetrics(d)[e.metric];
+      if (v != null) exp.push({ d, v });
+    }
+    for (let i = 1; i <= e.days; i++) {
+      const d = addDays(e.start, -i);
+      if (d < tracked) break;
+      const v = dayMetrics(d)[e.metric];
+      if (v != null) base.unshift({ d, v });
+    }
+    return { base, exp };
+  }
+  // Welch's t-test on day-level values.
+  function expVerdict(e, base, exp) {
+    if (exp.length < 2 || base.length < 2) {
+      return { cls: 'neutral', early: true, text: `Henüz erken: deneyde ${exp.length}, öncesinde ${base.length} tamamlanmış gün var. İki tarafta da en az 2 gün gerek.` };
+    }
+    const a = exp.map((x) => x.v), b = base.map((x) => x.v);
+    const diff = mean(a) - mean(b);
+    if (diff === 0) return { cls: 'neutral', text: 'Fark yok.' };
+    const va = stdev(a) ** 2 / a.length, vb = stdev(b) ** 2 / b.length, se = Math.sqrt(va + vb);
+    let sig;
+    if (se === 0) {
+      sig = true;
+    } else {
+      const den = va ** 2 / (a.length - 1) + vb ** 2 / (b.length - 1);
+      const df = den > 0 ? (va + vb) ** 2 / den : a.length + b.length - 2;
+      sig = Math.abs(diff) / se > tCrit(Math.floor(df));
+    }
+    const good = isGood(e.metric, diff);
+    if (sig) return good ? { cls: 'good', text: 'Anlamlı iyileşme (yaklaşık %95 güven).' } : { cls: 'bad', text: 'Anlamlı kötüleşme (yaklaşık %95 güven).' };
+    return { cls: 'neutral', text: `${good ? 'İyileşme' : 'Kötüleşme'} yönünde ama fark gürültü içinde. Daha fazla gün gerek ya da etki küçük.` };
+  }
+  function expChart(e, base, exp) {
+    const all = [...base.map((x) => ({ ...x, k: 'b' })), ...exp.map((x) => ({ ...x, k: 'e' }))];
+    if (!all.length) return '';
+    const vals = all.map((x) => x.v);
+    const lo = e.metric === 'first' ? Math.max(0, Math.min(...vals) - 30) : 0;
+    const hi = Math.max(lo + 1, ...vals);
+    const W = 340, H = 110, top = 14, bottom = 16, ch = H - top - bottom, bw = W / all.length;
+    const y = (v) => top + ch * (1 - (v - lo) / (hi - lo));
+    const M = METRICS[e.metric];
+    let g = '';
+    all.forEach((x, i) => {
+      const bx = i * bw + bw * 0.15, w = bw * 0.7;
+      g += `<rect class="${x.k === 'e' ? 'c-bar-acc' : 'c-bar-base'}" x="${bx}" y="${y(x.v)}" width="${w}" height="${Math.max(1, top + ch - y(x.v))}" rx="2"/>`;
+      if (all.length <= 16) g += `<text class="c-txt" x="${bx + w / 2}" y="${y(x.v) - 3}" text-anchor="middle">${e.metric === 'first' ? fmtClock(x.v) : fmtN(x.v, 0)}</text>`;
+      if (all.length <= 16) g += `<text class="c-txt" x="${bx + w / 2}" y="${H - 3}" text-anchor="middle">${new Date(x.d).getDate()}</text>`;
+    });
+    const line = (list, cls, x1, x2) => (list.length ? `<line class="c-mean ${cls}" x1="${x1}" x2="${x2}" y1="${y(mean(list.map((x) => x.v)))}" y2="${y(mean(list.map((x) => x.v)))}"/>` : '');
+    g += line(base, 'b', 0, base.length * bw) + line(exp, 'e', base.length * bw, W);
+    return svg(W, H, g) + `<div class="legend-row"><span><i class="lg-base"></i>önce</span><span><i class="lg-exp"></i>deney</span><span>kesikli: ortalama · ${M.label}</span></div>`;
+  }
+
+  function renderExperiments() {
+    const today0 = startOfDay(Date.now());
+    const sel = $('expMetric');
+    if (!sel.options.length) {
+      sel.innerHTML = Object.entries(METRICS).map(([k, m]) => `<option value="${k}">${m.label} (${m.better === 'down' ? 'azalsın' : 'artsın'})</option>`).join('');
+    }
+    if (!$('expStart').value) $('expStart').value = toDateInput(today0);
+    const list = $('expList');
+    if (!state.experiments.length) {
+      list.innerHTML = '<p class="hint" style="text-align:center;margin:0">Henüz deney yok. Yukarıdan bir hipotez tanımla.</p>';
+      return;
+    }
+    list.innerHTML = [...state.experiments].sort((a, b) => b.start - a.start).map((e) => {
+      const M = METRICS[e.metric], st = expStatus(e, today0);
+      const { base, exp } = expData(e, today0);
+      const v = expVerdict(e, base, exp);
+      const mb = mean(base.map((x) => x.v)), me = mean(exp.map((x) => x.v));
+      const dayN = Math.round((today0 - e.start) / DAY) + 1;
+      const stTxt = st === 'planned' ? 'başlamadı' : st === 'running' ? `gün ${dayN}/${e.days}, devam ediyor` : 'bitti';
+      const diff = mb != null && me != null ? me - mb : null;
+      const digits = e.metric === 'count' || e.metric === 'first2h' || e.metric === 'late' ? 1 : 0;
+      const sdFmt = (list) => (list.length > 1 ? '±' + fmtN(stdev(list.map((x) => x.v)), digits) : '–');
+      return `<section class="card" data-id="${e.id}">
+        <h2>${escapeHtml(e.name)}</h2>
+        <p class="exp-meta">${M.label} · ${fmtShort(e.start)} – ${fmtShort(addDays(e.start, e.days - 1))} · ${stTxt}</p>
+        ${expChart(e, base, exp)}
+        <div class="tbl-wrap"><table class="tbl">
+          <tr><th></th><th>Gün</th><th>Ortalama</th><th>Sapma</th></tr>
+          <tr><td>Önce</td><td>${base.length}</td><td>${M.fmt(mb)}</td><td>${sdFmt(base)}</td></tr>
+          <tr><td>Deney</td><td>${exp.length}</td><td>${M.fmt(me)}</td><td>${sdFmt(exp)}</td></tr>
+          <tr class="sum"><td>Fark</td><td></td><td class="${diff ? (isGood(e.metric, diff) ? 'good' : 'bad') : ''}">${diff == null ? '–' : fmtSigned(diff, digits) + M.unit}</td><td></td></tr>
+        </table></div>
+        <p class="verdict ${v.cls}">${st === 'running' && !v.early ? 'Ara sonuç: ' : ''}${v.text}</p>
+        <div class="row">
+          ${st === 'running' ? '<button class="btn" data-act="end">Bugün bitir</button>' : ''}
+          <button class="btn danger" data-act="del">Sil</button>
+        </div>
+      </section>`;
+    }).join('');
+  }
+  $('expList').addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-act]');
+    if (!b) return;
+    const id = b.closest('[data-id]').dataset.id;
+    const e = state.experiments.find((x) => x.id === id);
+    if (!e) return;
+    if (b.dataset.act === 'del') {
+      if (!confirm(`"${e.name}" deneyi silinsin mi? Kayıtların etkilenmez.`)) return;
+      state.experiments = state.experiments.filter((x) => x.id !== id);
+    } else {
+      const done = Math.round((startOfDay(Date.now()) - e.start) / DAY);
+      if (done < 1) { alert('Henüz tamamlanmış gün yok.'); return; }
+      if (!confirm(`Deney ${done} tamamlanmış günle bitirilsin mi?`)) return;
+      e.days = done;
+    }
+    save(); renderExperiments(); renderExpBanner();
+  });
+  $('expTemplate').onclick = () => {
+    $('expName').value = 'Carlos yürüyüşü sigarasız olursa sabah kümesi küçülür';
+    $('expMetric').value = 'first2h';
+    $('expStart').value = toDateInput(Date.now());
+    $('expDays').value = 7;
+  };
+  $('expCreate').onclick = () => {
+    const name = $('expName').value.trim();
+    const sv = $('expStart').value;
+    const days = Math.floor(Number($('expDays').value));
+    if (!name) { alert('Bir hipotez yaz.'); return; }
+    if (!sv) { alert('Başlangıç günü seç.'); return; }
+    if (!Number.isFinite(days) || days < 2 || days > 60) { alert('Süre 2 ile 60 gün arasında olmalı.'); return; }
+    state.experiments.push({ id: 'x' + Date.now().toString(36), name, metric: $('expMetric').value, start: fromDateInput(sv), days });
+    $('expName').value = '';
+    save(); renderExperiments(); renderExpBanner();
+    showToast('Deney başladı. Sonuçlar tamamlanan günlerle güncellenir.', false);
+  };
+
+  function renderExpBanner() {
+    const today0 = startOfDay(Date.now());
+    const running = state.experiments.filter((e) => expStatus(e, today0) === 'running');
+    const el = $('expBanner');
+    if (!running.length) { el.hidden = true; return; }
+    const e = running[0], M = METRICS[e.metric], { base, exp } = expData(e, today0);
+    const dayN = Math.round((today0 - e.start) / DAY) + 1;
+    el.hidden = false;
+    el.innerHTML = `🧪 <b>${escapeHtml(e.name)}</b><br>Gün ${dayN}/${e.days} · ${M.label}: bugün ${M.fmt(dayMetrics(today0)[e.metric])}`
+      + ` · deney ort. ${M.fmt(mean(exp.map((x) => x.v)))} · önce ${M.fmt(mean(base.map((x) => x.v)))}`
+      + (running.length > 1 ? ` · +${running.length - 1} deney daha` : '');
+  }
+  $('expBanner').onclick = () => showView('exp');
 
   // Keep the "time since" and day rollover fresh.
   let lastDay = dayKey(Date.now());
