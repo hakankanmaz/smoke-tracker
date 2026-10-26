@@ -295,6 +295,71 @@
     font-size: 14px; color: var(--muted); line-height: 1.5; cursor: pointer;
   }
   .exp-banner b { color: var(--text); }
+
+  /* small logging cards on Bugün (NRT, alcohol) */
+  .aux-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .aux-btn {
+    background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 4px; font-size: 14px; font-weight: 600; line-height: 1.3; cursor: pointer; touch-action: manipulation;
+  }
+  .aux-btn:active { transform: scale(.97); }
+  .aux-btn .e { display: block; font-size: 20px; margin-bottom: 2px; }
+  .aux-btn.on { border-color: var(--accent); color: var(--accent); }
+  .aux-status { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 10px 0 0; }
+  .aux-status b { color: var(--text); font-weight: 600; }
+  ul.entries li.aux .what { color: var(--muted); margin-left: 8px; font-size: 14px; }
+  ul.entries li.aux .main { cursor: default; }
+  .aux-row.three { grid-template-columns: repeat(3, 1fr); }
+  .wk { display: flex; gap: 6px; margin-top: 12px; }
+  .wk span { flex: 1; text-align: center; font-size: 11px; padding: 6px 0; border-radius: 8px; background: var(--bg); color: var(--muted); }
+  .wk .free { background: rgba(76,195,138,.18); color: var(--accent); }
+  .wk .drank { background: rgba(242,184,75,.18); color: var(--warn); }
+  .wk .now { outline: 1px solid var(--muted); }
+  .quit + .quit { margin-top: 16px; }
+  .quit .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+  .quit .name { font-size: 15px; font-weight: 600; }
+  .quit .days { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .quit .days small { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .quit .progress { height: 6px; background: var(--surface-2); }
+  .quit .sub { color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.5; }
+  .qrow { display: grid; grid-template-columns: 52px 1fr 36px; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); align-items: center; }
+  .qrow:first-child { border-top: 0; }
+  .qrow input, .quit-add input {
+    background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px; font-size: 16px; min-width: 0; width: 100%;
+  }
+  .qrow input.emo, .quit-add input.emo { text-align: center; }
+  .qrow input[type=date] { grid-column: 1 / -1; }
+  .qrow button { background: none; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; }
+  .quit-add { display: grid; grid-template-columns: 52px 1fr; gap: 8px; margin: 8px 0 12px; }
+  .quit-add input[type=date] { grid-column: 1 / -1; }
+  .quit-add .btn { grid-column: 1 / -1; }
+  .ci { margin-bottom: 14px; }
+  .ci-l { font-size: 14px; margin-bottom: 6px; }
+  .ci-l span { color: var(--muted); font-size: 12px; margin-left: 6px; }
+  .ci-s { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .ci-s.three { grid-template-columns: repeat(3, 1fr); }
+  .ci-s button {
+    background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 0; font-size: 15px; font-weight: 600; cursor: pointer; touch-action: manipulation;
+  }
+  .ci-s button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  #ciNote {
+    width: 100%; min-height: 64px; resize: vertical; background: var(--bg); color: var(--text);
+    border: 1px solid var(--line); border-radius: 12px; padding: 10px; font: inherit; font-size: 15px; margin-bottom: 14px;
+  }
+  .ci-sum { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 14px; }
+  .ci-sum b { font-variant-numeric: tabular-nums; }
+  .ci-note { color: var(--muted); font-size: 13px; margin: 8px 0 0; font-style: italic; }
+  .exp-banner.prompt { border-color: var(--accent); color: var(--text); }
+  .spark { width: 70px; height: 22px; display: block; margin-left: auto; }
+  .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+  .spark circle { fill: var(--accent); }
+  .rel + .rel { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .rel h3 { font-size: 14px; margin: 0 0 2px; }
+  .rel .q { color: var(--muted); font-size: 12px; margin: 0; line-height: 1.4; }
+  .field-trio { display: flex; gap: 10px; }
+  .field-trio .field { flex: 1; min-width: 0; }
 </style>
 </head>
 <body>
@@ -312,6 +377,7 @@
 
   <div id="view-today" class="view">
   <div class="exp-banner" id="expBanner" hidden></div>
+  <div class="exp-banner prompt" id="checkinPrompt" hidden>🌙 Akşam oldu. Günü <b>30 saniyede</b> değerlendir.</div>
 
   <div class="hero">
     <div class="label">Bugün içilen</div>
@@ -319,6 +385,7 @@
     <div class="since" id="since"></div>
     <div class="since" id="avgGap"></div>
     <div class="since resisted-line" id="resistedLine"></div>
+    <div class="since" id="planLine"></div>
   </div>
 
   <div class="progress" id="progress" hidden><div id="progressFill"></div></div>
@@ -328,9 +395,41 @@
     <div class="progress"><div id="gapGoalFill"></div></div>
   </div>
 
-  <button class="log-btn" id="logBtn">+ Sigara içtim</button>
+  <button class="log-btn" id="logBtn">+ IQOS içtim</button>
   <button class="craving-btn" id="cravingBtn">💪 Canım çekti, içmedim</button>
   <button class="link-btn" id="openBackfill">Kaydetmeyi unuttum, saat seç</button>
+
+  <section class="card">
+    <div class="card-head"><h2>Nikotin desteği</h2><span class="sub" id="nrtToday"></span></div>
+    <div class="aux-row">
+      <button class="aux-btn" id="patchBtn"><span class="e">🩹</span>Bant tak</button>
+      <button class="aux-btn" data-nrt="gum"><span class="e">🍬</span>Sakız</button>
+      <button class="aux-btn" data-nrt="lozenge"><span class="e">💊</span>Pastil</button>
+      <button class="aux-btn" data-nrt="spray"><span class="e">💨</span>Sprey</button>
+    </div>
+    <p class="aux-status" id="patchStatus"></p>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Alkol</h2><span class="sub" id="drinkToday"></span></div>
+    <div class="aux-row three">
+      <button class="aux-btn" data-drink="beer"><span class="e">🍺</span>Bira</button>
+      <button class="aux-btn" data-drink="wine"><span class="e">🍷</span>Şarap</button>
+      <button class="aux-btn" data-drink="other"><span class="e">🥃</span>Diğer</button>
+    </div>
+    <div class="wk" id="drinkWeekDays"></div>
+    <p class="aux-status" id="drinkWeek"></p>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Günlük kontrol</h2><span class="sub" id="checkinDay"></span></div>
+    <div id="checkinBody"></div>
+  </section>
+
+  <section class="card" id="quitCard">
+    <h2>Bırakılanlar</h2>
+    <div id="quitList"></div>
+  </section>
 
   <div class="stats">
     <div class="stat"><div class="v" id="statYesterday">0</div><div class="k">Dün</div><div class="d" id="statDiff"></div></div>
@@ -341,6 +440,11 @@
   <div class="pack" id="packCard">
     <div class="ico">📦</div>
     <div><div class="v" id="packDays"></div><div class="k" id="packSub"></div></div>
+  </div>
+
+  <div class="pack" id="moneyCard">
+    <div class="ico">💶</div>
+    <div><div class="v" id="moneyMain"></div><div class="k" id="moneySub"></div></div>
   </div>
 
   <section class="card">
@@ -391,10 +495,13 @@
       <button data-days="30">30 gün</button>
     </div>
     <section class="card"><h2>Trend</h2><div id="anTrend"></div></section>
-    <section class="card"><h2>Sigaralar arası süre</h2><div id="anGaps"></div></section>
+    <section class="card"><h2 id="anGapsTitle">Çubuklar arası süre</h2><div id="anGaps"></div></section>
     <section class="card"><h2>Gün × saat</h2><div id="anHeat"></div></section>
     <section class="card"><h2>Tetikleyici profili</h2><div id="anTriggers"></div></section>
     <section class="card"><h2>Rutin metrikleri</h2><div id="anRoutine"></div></section>
+    <section class="card"><h2>Nikotin desteği</h2><div id="anNrt"></div></section>
+    <section class="card"><h2>Günlük kontrol</h2><div id="anCheckin"></div></section>
+    <section class="card"><h2>İlişkiler</h2><div id="anRelations"></div></section>
     <section class="card">
       <h2>Ham veri</h2>
       <p class="hint" id="anDataNote"></p>
@@ -436,7 +543,7 @@
     <input type="date" id="editDayDate">
   </div>
   <div class="field">
-    <label for="editDayCount">O gün içilen sigara</label>
+    <label for="editDayCount" id="editDayCountLabel">O gün içilen çubuk</label>
     <input type="number" id="editDayCount" min="0" max="200" inputmode="numeric" autofocus>
   </div>
   <p class="hint" id="editDayHint"></p>
@@ -472,13 +579,35 @@
   </div>
 </dialog>
 
+<dialog id="checkinDialog">
+  <h2>Günlük kontrol</h2>
+  <p class="sheet-sub" id="checkinSub"></p>
+  <div id="ciScales"></div>
+  <div class="ci">
+    <div class="ci-l">Öksürük</div>
+    <div class="ci-s three" id="ciCough"></div>
+  </div>
+  <textarea id="ciNote" maxlength="500" placeholder="Not (isteğe bağlı)"></textarea>
+  <div class="row">
+    <button class="btn" data-close>Vazgeç</button>
+    <button class="btn primary" id="saveCheckin">Kaydet</button>
+  </div>
+</dialog>
+
 <dialog id="settingsDialog">
   <h2>Ayarlar</h2>
   <div class="field">
-    <label for="limitInput">Günlük hedef (en fazla kaç sigara)</label>
+    <label for="productInput">Ne kullanıyorsun?</label>
+    <select id="productInput">
+      <option value="iqos">IQOS (ısıtılmış tütün)</option>
+      <option value="cigarette">Sigara</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="limitInput" id="limitLabel">Günlük hedef (en fazla kaç çubuk)</label>
     <input type="number" id="limitInput" min="0" max="100" inputmode="numeric" placeholder="Örn. 10 — boş bırakırsan hedef yok">
   </div>
-  <p class="hint">Hedefi her hafta 1 azaltmak, yavaş ama kalıcı bir bırakma yöntemidir.</p>
+  <p class="hint" id="limitHint">Hedefi her hafta 1 azaltmak, yavaş ama kalıcı bir bırakma yöntemidir.</p>
   <div class="field-pair">
     <div class="field">
       <label for="wakeInput">Kalkış saati</label>
@@ -489,18 +618,74 @@
       <input type="time" id="sleepInput">
     </div>
   </div>
-  <p class="hint">Sigaralar arası ortalama süre, uyanık olduğun saatlere göre hesaplanır.</p>
+  <p class="hint" id="avgGapHint">Çubuklar arası ortalama süre, uyanık olduğun saatlere göre hesaplanır.</p>
   <div class="field">
-    <label for="minGapInput">Hedef ara (iki sigara arası en az kaç dakika)</label>
+    <label for="minGapInput" id="minGapLabel">Hedef ara (iki çubuk arası en az kaç dakika)</label>
     <input type="number" id="minGapInput" min="0" max="1440" step="5" inputmode="numeric" placeholder="Örn. 90 — boş bırakırsan geri sayım yok">
   </div>
   <p class="hint">Hedefi her hafta 15 dakika uzatmak sayıyı kendiliğinden düşürür.</p>
   <div class="field">
-    <label for="packSizeInput">Paketteki sigara sayısı</label>
+    <label for="packSizeInput" id="packSizeLabel">Paketteki çubuk sayısı</label>
     <input type="number" id="packSizeInput" min="1" max="100" inputmode="numeric" placeholder="20">
   </div>
   <div class="row">
     <button class="btn primary" id="saveSettings">Kaydet</button>
+  </div>
+  <hr>
+  <h3 class="section">Azaltma planı</h3>
+  <label class="check"><input type="checkbox" id="taperEnabled"> Günlük hedefi plana göre otomatik ayarla</label>
+  <div class="field-pair">
+    <div class="field"><label for="taperStart">Başlangıç günü</label><input type="date" id="taperStart"></div>
+    <div class="field"><label for="taperStartValue">Başlangıç hedefi</label><input type="number" id="taperStartValue" min="0" max="100" inputmode="numeric"></div>
+  </div>
+  <div class="field-trio">
+    <div class="field"><label for="taperStep">Adım</label><input type="number" id="taperStep" min="1" max="20" inputmode="numeric"></div>
+    <div class="field"><label for="taperInterval">Kaç günde</label><input type="number" id="taperInterval" min="1" max="60" inputmode="numeric"></div>
+    <div class="field"><label for="taperFloor">Taban</label><input type="number" id="taperFloor" min="0" max="100" inputmode="numeric"></div>
+  </div>
+  <p class="hint" id="taperPreview"></p>
+  <div class="row">
+    <button class="btn primary" id="saveTaper">Planı kaydet</button>
+  </div>
+  <hr>
+  <h3 class="section" id="moneySection">Para</h3>
+  <div class="field-pair">
+    <div class="field"><label for="packPriceInput">Paket fiyatı (€)</label><input type="number" id="packPriceInput" min="0" max="100" step="0.1" inputmode="decimal" placeholder="Örn. 6"></div>
+    <div class="field"><label for="baselineInput" id="baselineLabel">Önceki tüketim (günde)</label><input type="number" id="baselineInput" min="1" max="100" inputmode="numeric"></div>
+  </div>
+  <div class="field-trio">
+    <div class="field"><label for="priceBeer">🍺 €</label><input type="number" id="priceBeer" min="0" max="100" step="0.1" inputmode="decimal"></div>
+    <div class="field"><label for="priceWine">🍷 €</label><input type="number" id="priceWine" min="0" max="100" step="0.1" inputmode="decimal"></div>
+    <div class="field"><label for="priceOther">🥃 €</label><input type="number" id="priceOther" min="0" max="100" step="0.1" inputmode="decimal"></div>
+  </div>
+  <p class="hint">Tasarruf, takibe başladığın günden bu yana önceki tüketimine göre hesaplanır. İçki fiyatları haftalık alkol harcaması için.</p>
+  <div class="row">
+    <button class="btn primary" id="saveMoney">Kaydet</button>
+  </div>
+  <hr>
+  <h3 class="section">Bırakılanlar</h3>
+  <p class="hint">Bıraktığın her şey için temiz gün sayacı. Tarihi değiştirirsen sayaç o günden başlar.</p>
+  <div id="quitEditList"></div>
+  <div class="quit-add">
+    <input class="emo" id="newQuitEmoji" maxlength="4" placeholder="🚭" aria-label="Emoji">
+    <input id="newQuitLabel" maxlength="30" placeholder="Ne bıraktın?" aria-label="Ad">
+    <input type="date" id="newQuitDate" aria-label="Bırakma tarihi">
+    <button class="btn" id="addQuit">Ekle</button>
+  </div>
+  <hr>
+  <h3 class="section">Alkol</h3>
+  <p class="hint">Birim = standart içki (10 g alkol). 330 ml %5 bira ≈ 1,3 · 150 ml %12 şarap ≈ 1,4.</p>
+  <div class="field-trio">
+    <div class="field"><label for="unitBeer">🍺 Bira</label><input type="number" id="unitBeer" min="0.1" max="10" step="0.1" inputmode="decimal"></div>
+    <div class="field"><label for="unitWine">🍷 Şarap</label><input type="number" id="unitWine" min="0.1" max="10" step="0.1" inputmode="decimal"></div>
+    <div class="field"><label for="unitOther">🥃 Diğer</label><input type="number" id="unitOther" min="0.1" max="10" step="0.1" inputmode="decimal"></div>
+  </div>
+  <div class="field">
+    <label for="alcFreeGoalInput">Haftalık alkolsüz akşam hedefi</label>
+    <input type="number" id="alcFreeGoalInput" min="0" max="7" inputmode="numeric">
+  </div>
+  <div class="row">
+    <button class="btn primary" id="saveDrinkSettings">Kaydet</button>
   </div>
   <hr>
   <h3 class="section">Tetikleyiciler</h3>
@@ -547,6 +732,90 @@
     { id: 'alcohol', emoji: '🍺', label: 'Alkol' },
     { id: 'habit', emoji: '🔁', label: 'Alışkanlık' },
   ];
+  // Wording for the tracked product. The data is the same; only labels and Turkish suffixes change.
+  const PRODUCTS = {
+    iqos: {
+      name: 'IQOS', unit: 'çubuk', units: 'çubuklar', dat: 'çubuğa', abl: 'çubuktan', packAdj: 'çubukluk', toward: "IQOS'a",
+      log: '+ IQOS içtim', since: "Son IQOS'tan beri", next: 'Sonraki IQOS için en erken', without: "IQOS'suz", title: 'IQOS Sayacı', csv: 'iqos',
+    },
+    cigarette: {
+      name: 'Sigara', unit: 'sigara', units: 'sigaralar', dat: 'sigaraya', abl: 'sigaradan', packAdj: 'sigaralık', toward: 'sigaraya',
+      log: '+ Sigara içtim', since: 'Son sigaradan beri', next: 'Sonraki sigara için en erken', without: 'sigarasız', title: 'Sigara Sayacı', csv: 'sigara',
+    },
+  };
+  // Nicotine replacement log entries: { t, type }.
+  const NRT = {
+    patch_on: { emoji: '🩹', label: 'Bant takıldı' },
+    patch_off: { emoji: '🩹', label: 'Bant çıkarıldı' },
+    gum: { emoji: '🍬', label: 'Sakız' },
+    lozenge: { emoji: '💊', label: 'Pastil' },
+    spray: { emoji: '💨', label: 'Sprey' },
+  };
+  const nrtList = (a) => (Array.isArray(a)
+    ? a.filter((x) => x && Number.isFinite(x.t) && NRT[x.type]).map((x) => ({ t: x.t, type: x.type })).sort((x, y) => x.t - y.t)
+    : []);
+  // Alcohol log entries: { t, type, units }. Units are standard drinks (10 g alcohol).
+  const DRINKS = {
+    beer: { emoji: '🍺', label: 'Bira', csv: 'bira' },
+    wine: { emoji: '🍷', label: 'Şarap', csv: 'sarap' },
+    other: { emoji: '🥃', label: 'Diğer', csv: 'diger' },
+  };
+  const DEFAULT_UNITS = { beer: 1.3, wine: 1.4, other: 1 };
+  const posNum = (v, def) => (Number.isFinite(v) && v > 0 ? v : def);
+  function unitMap(m) {
+    const o = m && typeof m === 'object' ? m : {};
+    return { beer: posNum(o.beer, DEFAULT_UNITS.beer), wine: posNum(o.wine, DEFAULT_UNITS.wine), other: posNum(o.other, DEFAULT_UNITS.other) };
+  }
+  function drinkList(a, units) {
+    return Array.isArray(a)
+      ? a.filter((x) => x && Number.isFinite(x.t) && DRINKS[x.type])
+        .map((x) => ({ t: x.t, type: x.type, units: posNum(x.units, units[x.type]) })).sort((x, y) => x.t - y.t)
+      : [];
+  }
+  // Things already quit, each with a clean-since date (YYYY-MM-DD).
+  const DEFAULT_QUITS = [{ id: 'cannabis', label: 'Ot', emoji: '🌿', since: '2026-10-07' }];
+  const validDate = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  function quitList(a) {
+    if (!Array.isArray(a)) return DEFAULT_QUITS.map((q) => ({ ...q }));
+    return a.filter((q) => q && typeof q.label === 'string' && q.label.trim() && validDate(q.since))
+      .map((q) => ({ id: String(q.id || q.label), label: q.label.slice(0, 30), emoji: typeof q.emoji === 'string' ? q.emoji.slice(0, 4) : '', since: q.since }));
+  }
+  // Daily check-ins keyed by evening day (YYYY-MM-DD): 1–5 scales, cough 0|1|2 and a note.
+  const CHECKIN_SCALES = [
+    { k: 'mood', label: 'Ruh hali', short: 'Ruh hali', hint: '1 kötü · 5 çok iyi', emoji: '🙂', better: 'up' },
+    { k: 'irritability', label: 'Sinirlilik', short: 'Sinirlilik', hint: '1 sakin · 5 çok sinirli', emoji: '😤', better: 'down' },
+    { k: 'sleep', label: 'Uyku (dün gece)', short: 'Uyku', hint: '1 kötü · 5 çok iyi', emoji: '😴', better: 'up' },
+    { k: 'energy', label: 'Enerji', short: 'Enerji', hint: '1 düşük · 5 yüksek', emoji: '⚡', better: 'up' },
+  ];
+  const COUGH = ['Yok', 'Az', 'Çok'];
+  const scale5 = (v) => (Number.isInteger(v) && v >= 1 && v <= 5 ? v : null);
+  function checkinMap(m) {
+    const out = {};
+    if (!m || typeof m !== 'object') return out;
+    for (const [k, v] of Object.entries(m)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !v || typeof v !== 'object') continue;
+      const c = {
+        mood: scale5(v.mood), irritability: scale5(v.irritability), sleep: scale5(v.sleep), energy: scale5(v.energy),
+        cough: [0, 1, 2].includes(v.cough) ? v.cough : null, note: typeof v.note === 'string' ? v.note.slice(0, 500) : '',
+      };
+      if (c.mood != null || c.irritability != null || c.sleep != null || c.energy != null || c.cough != null || c.note) out[k] = c;
+    }
+    return out;
+  }
+  // Step-down plan: from startValue, lower the daily limit by `step` every `interval` days, never below `floor`.
+  const intIn = (v, lo, hi, def) => (Number.isInteger(v) && v >= lo && v <= hi ? v : def);
+  function taperOf(t) {
+    const o = t && typeof t === 'object' ? t : {};
+    return {
+      enabled: o.enabled === true, start: validDate(o.start) ? o.start : null,
+      startValue: intIn(o.startValue, 0, 100, 10), step: intIn(o.step, 1, 20, 1), interval: intIn(o.interval, 1, 60, 7), floor: intIn(o.floor, 0, 100, 0),
+    };
+  }
+  // A manual change of today's limit while a plan is on: { day: YYYY-MM-DD, value }.
+  const overrideOf = (o) => (o && validDate(o.day) && (o.value === null || intIn(o.value, 0, 100, -1) >= 0) ? { day: o.day, value: o.value } : null);
+  // Prices in euro; null means not set.
+  const price = (v) => (Number.isFinite(v) && v > 0 && v <= 1000 ? v : null);
+  const priceMap = (m) => { const o = m && typeof m === 'object' ? m : {}; return { beer: price(o.beer), wine: price(o.wine), other: price(o.other) }; };
   const nums = (a) => (Array.isArray(a) ? a.filter(Number.isFinite).sort((x, y) => x - y) : []);
   // Tag maps are { "<timestamp>": ["triggerId", ...] }.
   function tagMap(m) {
@@ -569,7 +838,9 @@
 
   // Normalise any stored or imported object into the app's state shape.
   function sanitize(d) {
+    const drinkUnits = unitMap(d.drinkUnits);
     return {
+      product: d.product === 'cigarette' ? 'cigarette' : 'iqos',
       entries: nums(d.entries),
       limit: Number.isFinite(d.limit) ? d.limit : null,
       wake: validTime(d.wake) ? d.wake : DEFAULT_WAKE,
@@ -577,13 +848,24 @@
       minGap: Number.isFinite(d.minGap) && d.minGap > 0 ? d.minGap : null,
       packSize: Number.isFinite(d.packSize) && d.packSize > 0 ? d.packSize : 20,
       resisted: nums(d.resisted),
+      nrt: nrtList(d.nrt),
+      drinks: drinkList(d.drinks, drinkUnits),
+      drinkUnits,
+      quits: quitList(d.quits),
+      taper: taperOf(d.taper),
+      packPrice: price(d.packPrice),
+      drinkPrice: priceMap(d.drinkPrice),
+      baselinePerDay: intIn(d.baselinePerDay, 1, 100, 20),
+      limitOverride: overrideOf(d.limitOverride),
+      checkins: checkinMap(d.checkins),
+      alcFreeGoal: Number.isInteger(d.alcFreeGoal) && d.alcFreeGoal >= 0 && d.alcFreeGoal <= 7 ? d.alcFreeGoal : 3,
       tags: tagMap(d.tags),
       rtags: tagMap(d.rtags),
       triggers: triggerList(d.triggers),
       askTrigger: d.askTrigger !== false,
       experiments: Array.isArray(d.experiments)
         ? d.experiments.filter((e) => e && typeof e.name === 'string' && Number.isFinite(e.start) && Number.isFinite(e.days)
-          && ['count', 'first2h', 'late', 'auto', 'p50', 'first'].includes(e.metric))
+          && ['count', 'first2h', 'late', 'auto', 'p50', 'first', 'drinks', 'alcfree', 'gum', 'irritability', 'sleep'].includes(e.metric))
           .map((e) => ({ id: String(e.id || e.start), name: e.name, metric: e.metric, start: e.start, days: e.days }))
         : [],
       // Days whose times were estimated by "Günü düzenle" (YYYY-MM-DD).
@@ -684,8 +966,56 @@
     return map;
   }
 
+  // ---------- daily limit ----------
+  function planFor(day0) {
+    const tp = state.taper;
+    if (!tp.enabled || !tp.start) return null;
+    const d = Math.round((day0 - parseDay(tp.start)) / 86400000);
+    if (d < 0) return null;
+    return Math.max(tp.floor, tp.startValue - Math.floor(d / tp.interval) * tp.step);
+  }
+  // Today's manual override wins, then the plan, then the fixed limit from settings.
+  function limitFor(day0) {
+    const o = state.limitOverride;
+    if (o && o.day === toDateInput(day0)) return o.value;
+    const p = planFor(day0);
+    return p != null ? p : state.limit;
+  }
+  // Next day the plan steps down from today's value, or null at the floor.
+  function nextStep(day0) {
+    const tp = state.taper, cur = planFor(day0);
+    if (cur == null || cur <= tp.floor) return null;
+    const d = Math.round((day0 - parseDay(tp.start)) / 86400000);
+    const at = addDays(parseDay(tp.start), (Math.floor(d / tp.interval) + 1) * tp.interval);
+    return { at, value: Math.max(tp.floor, cur - tp.step), days: Math.round((at - day0) / 86400000) };
+  }
+  function renderPlanLine(today0) {
+    const tp = state.taper, el = $('planLine');
+    if (!tp.enabled || !tp.start) { el.textContent = ''; return; }
+    const cur = planFor(today0);
+    if (cur == null) { el.innerHTML = `Plan <b>${fmtShort(parseDay(tp.start))}</b> günü ${tp.startValue} ile başlıyor`; return; }
+    const o = state.limitOverride && state.limitOverride.day === toDateInput(today0) ? state.limitOverride : null;
+    const nx = nextStep(today0);
+    el.innerHTML = `Plan: bugün <b>${cur}</b>${o ? ` <span class="note">(elle ${o.value ?? 'hedefsiz'})</span>` : ''}`
+      + (nx ? `, ${nx.days} gün sonra <b>${nx.value}</b>` : ' <span class="note">· taban</span>');
+  }
+
   // ---------- render ----------
   const $ = (id) => document.getElementById(id);
+  const P = () => PRODUCTS[state.product];
+  const cap = (s) => s.charAt(0).toLocaleUpperCase('tr') + s.slice(1);
+  function applyWords() {
+    const p = P();
+    document.title = p.title;
+    $('logBtn').textContent = p.log;
+    $('anGapsTitle').textContent = `${cap(p.units)} arası süre`;
+    $('editDayCountLabel').textContent = `O gün içilen ${p.unit}`;
+    $('limitLabel').textContent = `Günlük hedef (en fazla kaç ${p.unit})`;
+    $('avgGapHint').textContent = `${cap(p.units)} arası ortalama süre, uyanık olduğun saatlere göre hesaplanır.`;
+    $('minGapLabel').textContent = `Hedef ara (iki ${p.unit} arası en az kaç dakika)`;
+    $('packSizeLabel').textContent = `Paketteki ${p.unit} sayısı`;
+    $('expName').placeholder = `Örn. Carlos yürüyüşü ${p.without} olursa sabah kümesi küçülür`;
+  }
 
   function render() {
     const now = Date.now();
@@ -694,8 +1024,10 @@
     const countFor = (t) => counts.get(dayKey(t)) || 0;
     const today = countFor(now);
     const yesterday = countFor(addDays(today0, -1));
-    const limit = state.limit;
+    const limit = limitFor(today0);
 
+    applyWords();
+    renderPlanLine(today0);
     $('dateLabel').textContent = new Date(now).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
 
     const countEl = $('todayCount');
@@ -714,6 +1046,10 @@
     }
 
     renderSince(now);
+    renderNrt(now);
+    renderDrinks(now);
+    renderQuits(now);
+    renderCheckin(now);
     renderHours(now);
 
     $('statYesterday').textContent = yesterday;
@@ -734,6 +1070,7 @@
     }
     $('statAvg7').textContent = n ? (Math.round((sum / n) * 10) / 10).toLocaleString('tr-TR') : '–';
     renderPack(n ? sum / n : null, n);
+    renderMoney(now);
 
     // Chart: last 14 days including today.
     const days = [];
@@ -752,9 +1089,10 @@
       num.className = 'num';
       num.textContent = d.tracked ? d.c : '';
       const bar = document.createElement('div');
+      const dl = limitFor(d.t);
       bar.className = 'bar' + (d.t === today0 ? ' today' : '')
-        + (limit != null && d.c > limit ? ' over' : '')
-        + (limit != null && d.c <= limit && d.c > 0 && d.t !== today0 ? ' under' : '');
+        + (dl != null && d.c > dl ? ' over' : '')
+        + (dl != null && d.c <= dl && d.c > 0 && d.t !== today0 ? ' under' : '');
       bar.style.height = Math.max(2, (d.c / max) * BAR_AREA) + 'px';
       wrap.append(num, bar);
       chart.append(wrap);
@@ -788,6 +1126,8 @@
     const items = [
       ...state.entries.filter(inDay).map((t) => ({ kind: 'smoke', t })),
       ...state.resisted.filter(inDay).map((t) => ({ kind: 'resisted', t })),
+      ...state.nrt.filter((x) => inDay(x.t)).map((x) => ({ kind: 'nrt', t: x.t, type: x.type })),
+      ...state.drinks.filter((x) => inDay(x.t)).map((x) => ({ kind: 'drink', t: x.t, type: x.type, units: x.units })),
     ].sort((a, b) => b.t - a.t);
     const list = $('entries');
     list.innerHTML = '';
@@ -796,12 +1136,18 @@
       return;
     }
     if (isSpreadDay(day0)) list.innerHTML = '<li class="empty">~ Bu günün saatleri tahmini, eşit dağıtılmış. Saat bazlı analizlere katılmaz.</li>';
-    for (const { kind, t } of items) {
+    for (const { kind, t, type, units } of items) {
       const li = document.createElement('li');
       const main = document.createElement('span');
       main.className = 'main';
-      const emojis = tagsFor(kind, t).map((id) => triggerById(id)?.emoji || '').join('');
-      if (kind === 'smoke') {
+      const emojis = kind === 'nrt' || kind === 'drink' ? '' : tagsFor(kind, t).map((id) => triggerById(id)?.emoji || '').join('');
+      if (kind === 'nrt') {
+        li.className = 'aux';
+        main.innerHTML = `${fmtTime(t)}<span class="what">${NRT[type].emoji} ${NRT[type].label}</span>`;
+      } else if (kind === 'drink') {
+        li.className = 'aux';
+        main.innerHTML = `${fmtTime(t)}<span class="what">${DRINKS[type].emoji} ${DRINKS[type].label} · ${fmt1(units)} birim</span>`;
+      } else if (kind === 'smoke') {
         const idx = state.entries.indexOf(t);
         const prev = idx > 0 ? state.entries[idx - 1] : null;
         let gapHtml = '';
@@ -815,13 +1161,13 @@
         li.className = 'resisted';
         main.innerHTML = `${fmtTime(t)}<span class="what">💪 İçmedim</span>${emojis ? `<span class="tags">${emojis}</span>` : ''}`;
       }
-      main.onclick = () => openTriggerSheet(kind, t, false);
+      if (kind === 'smoke' || kind === 'resisted') main.onclick = () => openTriggerSheet(kind, t, false);
       const del = document.createElement('button');
       del.textContent = '×';
       del.setAttribute('aria-label', `${fmtTime(t)} kaydını sil`);
       del.onclick = () => {
         if (!confirm(`${fmtTime(t)} kaydı silinsin mi?`)) return;
-        removeItem(kind, t);
+        removeItem(kind, t, type);
         save(); render();
       };
       li.append(main, del);
@@ -838,10 +1184,10 @@
       $('packSub').textContent = 'Hesap için en az 1 tam günlük kayıt gerekli.';
     } else if (avg === 0) {
       $('packDays').textContent = 'Son günlerde paket açmadın 🎉';
-      $('packSub').textContent = `${days} günde hiç sigara yok.`;
+      $('packSub').textContent = `${days} günde hiç ${P().unit} yok.`;
     } else {
       $('packDays').textContent = `1 paket ≈ ${fmt1(size / avg)} gün`;
-      $('packSub').textContent = `Günde ort. ${fmt1(avg)} sigara · ${size} sigaralık paket · ayda ~${fmt1((avg * 30) / size)} paket`
+      $('packSub').textContent = `Günde ort. ${fmt1(avg)} ${P().unit} · ${size} ${P().packAdj} paket · ayda ~${fmt1((avg * 30) / size)} paket`
         + (days < 7 ? ` · son ${days} güne göre` : ' · son 7 güne göre');
     }
   }
@@ -850,12 +1196,259 @@
   const triggerById = (id) => state.triggers.find((x) => x.id === id);
   const tagStore = (kind) => (kind === 'smoke' ? state.tags : state.rtags);
   const tagsFor = (kind, t) => (tagStore(kind)[String(t)] || []).filter((id) => triggerById(id));
-  function removeItem(kind, t) {
+  function removeItem(kind, t, type) {
+    if (kind === 'nrt' || kind === 'drink') {
+      const arr = kind === 'nrt' ? state.nrt : state.drinks;
+      const j = arr.findIndex((x) => x.t === t && (type == null || x.type === type));
+      if (j >= 0) arr.splice(j, 1);
+      return;
+    }
     const arr = kind === 'smoke' ? state.entries : state.resisted;
     const j = arr.lastIndexOf(t);
     if (j >= 0) arr.splice(j, 1);
     delete tagStore(kind)[String(t)];
   }
+
+  let lastAdded = null; // { kind, t, type? } for the toast's undo
+
+  // ---------- nicotine replacement ----------
+  // Patch wear intervals [on, off) built from the on/off log; a patch that is still on runs until now.
+  function patchIntervals(now = Date.now()) {
+    const out = [];
+    let on = null;
+    for (const x of state.nrt) {
+      if (x.type === 'patch_on' && on == null) on = x.t;
+      else if (x.type === 'patch_off' && on != null) { out.push([on, x.t]); on = null; }
+    }
+    if (on != null) out.push([on, Math.max(on, now)]);
+    return out;
+  }
+  const patchOnSince = () => {
+    const last = [...state.nrt].reverse().find((x) => x.type === 'patch_on' || x.type === 'patch_off');
+    return last && last.type === 'patch_on' ? last.t : null;
+  };
+  // A patch day has at least one hour of patch wear inside that calendar day.
+  function isPatchDay(day0) {
+    const day1 = addDays(day0, 1);
+    const ms = patchIntervals().reduce((s, [a, b]) => s + Math.max(0, Math.min(b, day1) - Math.max(a, day0)), 0);
+    return ms >= 3600000;
+  }
+  const nrtCount = (day0, type) => state.nrt.filter((x) => x.type === type && x.t >= day0 && x.t < addDays(day0, 1)).length;
+
+  function renderNrt(now = Date.now()) {
+    const today0 = startOfDay(now);
+    const since = patchOnSince();
+    $('patchBtn').innerHTML = `<span class="e">🩹</span>${since != null ? 'Bandı çıkar' : 'Bant tak'}`;
+    $('patchBtn').classList.toggle('on', since != null);
+    if (since != null) {
+      $('patchStatus').innerHTML = `🩹 Bant <b>takılı</b> · takılma ${startOfDay(since) < today0 ? fmtShort(since) + ' ' : ''}${fmtTime(since)} · <b>${fmtDuration(now - since)}</b>`;
+    } else {
+      const off = [...state.nrt].reverse().find((x) => x.type === 'patch_off');
+      $('patchStatus').innerHTML = 'Bant takılı değil' + (off ? ` · son çıkarma ${startOfDay(off.t) < today0 ? fmtShort(off.t) + ' ' : ''}${fmtTime(off.t)}` : '');
+    }
+    const parts = ['gum', 'lozenge', 'spray'].map((k) => [k, nrtCount(today0, k)]).filter(([, c]) => c)
+      .map(([k, c]) => `${NRT[k].emoji} ${c}`);
+    $('nrtToday').textContent = parts.length ? 'Bugün ' + parts.join(' · ') : '';
+  }
+  function addNrt(type, t = Date.now()) {
+    state.nrt.push({ t, type });
+    state.nrt.sort((a, b) => a.t - b.t);
+    lastAdded = { kind: 'nrt', t, type };
+    save(); render();
+    if (navigator.vibrate) navigator.vibrate(20);
+    const n = ['gum', 'lozenge', 'spray'].includes(type) ? ` · bugün ${nrtCount(startOfDay(t), type)}.` : '';
+    showToast(`${NRT[type].emoji} ${NRT[type].label}${n}`, true);
+  }
+  $('patchBtn').onclick = () => addNrt(patchOnSince() != null ? 'patch_off' : 'patch_on');
+  document.querySelectorAll('[data-nrt]').forEach((b) => { b.onclick = () => addNrt(b.dataset.nrt); });
+
+  // ---------- alcohol ----------
+  // Drinks after midnight but before wake-up belong to the previous evening.
+  const eveningOf = (t) => startOfDay(t - toMin(state.wake) * 60000);
+  const drinksOn = (day0) => state.drinks.filter((x) => eveningOf(x.t) === day0);
+  const weekStart = (day0) => addDays(day0, -((new Date(day0).getDay() + 6) % 7));
+  const sumUnits = (list) => list.reduce((s, x) => s + x.units, 0);
+
+  function renderDrinks(now = Date.now()) {
+    const tonight = eveningOf(now);
+    const todayList = drinksOn(tonight);
+    $('drinkToday').textContent = todayList.length ? `Bu akşam ${todayList.length} içki · ${fmt1(sumUnits(todayList))} birim` : '';
+    const ws = weekStart(tonight);
+    let free = 0, done = 0, html = '';
+    const week = [];
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(ws, i), list = drinksOn(d);
+      week.push(...list);
+      let cls = '';
+      if (d < tonight) { done++; if (list.length) cls = 'drank'; else { cls = 'free'; free++; } }
+      else if (d === tonight) cls = (list.length ? 'drank' : '') + ' now';
+      html += `<span class="${cls.trim()}">${DAY_NAMES[new Date(d).getDay()]}</span>`;
+    }
+    $('drinkWeekDays').innerHTML = html;
+    const goal = state.alcFreeGoal, left = 7 - done, need = Math.max(0, goal - free);
+    let status;
+    if (!goal) status = '';
+    else if (!need) status = ' · <b>hedefe ulaştın ✓</b>';
+    else if (need > left) status = ' · bu hafta hedefe ulaşılamıyor';
+    else status = ` · hedef için ${need} alkolsüz akşam daha`;
+    $('drinkWeek').innerHTML = `Bu hafta <b>${week.length}</b> içki · <b>${fmt1(sumUnits(week))}</b> birim<br>`
+      + `Alkolsüz akşam <b>${free}</b>${goal ? ` / hedef ${goal}` : ''}${status}`;
+  }
+  function addDrink(type, t = Date.now()) {
+    state.drinks.push({ t, type, units: state.drinkUnits[type] });
+    state.drinks.sort((a, b) => a.t - b.t);
+    lastAdded = { kind: 'drink', t, type };
+    save(); render();
+    if (navigator.vibrate) navigator.vibrate(20);
+    showToast(`${DRINKS[type].emoji} ${DRINKS[type].label} · bu akşam ${drinksOn(eveningOf(t)).length}. içki`, true);
+  }
+  document.querySelectorAll('[data-drink]').forEach((b) => { b.onclick = () => addDrink(b.dataset.drink); });
+  // A drink in the previous 4 hours makes 'Alkol' the suggested trigger for a new cigarette.
+  const drankRecently = (t) => state.drinks.some((x) => x.t <= t && t - x.t <= 4 * 3600000);
+
+  // ---------- money ----------
+  const fmtEur = (x) => `${x < 0 ? '−' : ''}${Math.abs(x).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: Math.abs(x) >= 100 ? 0 : 2 })} €`;
+  // Sticks not smoked vs the baseline, from `from` to now; today counts in proportion to the awake time so far.
+  function sticksSaved(from, now = Date.now()) {
+    const today0 = startOfDay(now), counts = countsByDay();
+    let saved = 0;
+    for (let d = from; d < today0; d = addDays(d, 1)) saved += state.baselinePerDay - (counts.get(dayKey(d)) || 0);
+    if (from <= today0) saved += state.baselinePerDay * (awakeElapsed(now) / awakeLen()) - (counts.get(dayKey(today0)) || 0);
+    return saved;
+  }
+  function renderMoney(now = Date.now()) {
+    const today0 = startOfDay(now);
+    const week = weekStart(today0);
+    const drinkWeek = state.drinks.filter((x) => eveningOf(x.t) >= weekStart(eveningOf(now)));
+    const priced = drinkWeek.filter((x) => state.drinkPrice[x.type] != null);
+    const drinkSpend = priced.reduce((s, x) => s + state.drinkPrice[x.type], 0);
+    const drinkTxt = priced.length ? `Alkol bu hafta ${fmtEur(drinkSpend)}${priced.length < drinkWeek.length ? ' (fiyatı girilmeyenler hariç)' : ''}` : '';
+    if (state.packPrice == null) {
+      $('moneyMain').textContent = 'Tasarrufu görmek için paket fiyatını gir';
+      $('moneySub').textContent = ['Ayarlar → Para. Dokun.', drinkTxt].filter(Boolean).join(' · ');
+      return;
+    }
+    const perStick = state.packPrice / state.packSize;
+    const start = trackedStart();
+    const days = Math.round((today0 - start) / 86400000) + 1;
+    const total = sticksSaved(start, now) * perStick, thisWeek = sticksSaved(Math.max(week, start), now) * perStick;
+    $('moneyMain').textContent = total >= 0 ? `≈ ${fmtEur(total)} tasarruf` : `${fmtEur(-total)} fazla harcama`;
+    $('moneySub').textContent = [`Bu hafta ${fmtEur(thisWeek)} · ${days} günde, günde ${state.baselinePerDay} ${P().unit} başlangıca göre`, drinkTxt].filter(Boolean).join(' · ');
+  }
+  $('moneyCard').onclick = () => { openSettings(); $('moneySection').scrollIntoView({ block: 'start' }); };
+
+  // ---------- quit streaks ----------
+  const MILESTONES = [[7, 0, '1 hafta'], [14, 0, '2 hafta'], [0, 1, '1 ay'], [0, 3, '3 ay'], [0, 6, '6 ay'], [0, 12, '1 yıl']];
+  const parseDay = (v) => { const [y, m, d] = v.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
+  function milestoneAt(since0, [days, months]) {
+    if (days) return addDays(since0, days);
+    const d = new Date(since0);
+    d.setMonth(d.getMonth() + months);
+    return d.getTime();
+  }
+  // Previous and next milestone for a streak; after one year, every anniversary is the next one.
+  function milestones(since0, today0) {
+    let prev = null, next = null;
+    for (const m of MILESTONES) {
+      const at = milestoneAt(since0, m);
+      if (at <= today0) prev = { at, label: m[2] };
+      else if (!next) next = { at, label: m[2] };
+    }
+    for (let y = 2; !next; y++) {
+      const at = milestoneAt(since0, [0, 12 * y]);
+      if (at <= today0) prev = { at, label: `${y} yıl` }; else next = { at, label: `${y} yıl` };
+    }
+    return { prev, next };
+  }
+  function renderQuits(now = Date.now()) {
+    const today0 = startOfDay(now);
+    $('quitCard').hidden = !state.quits.length;
+    $('quitList').innerHTML = state.quits.map((q) => {
+      const since0 = parseDay(q.since);
+      const days = Math.round((today0 - since0) / 86400000);
+      if (days < 0) return `<div class="quit"><div class="top"><span class="name">${q.emoji} ${escapeHtml(q.label)}</span><span class="days"><small>${fmtShort(since0)} başlıyor</small></span></div></div>`;
+      const { prev, next } = milestones(since0, today0);
+      const from = prev ? prev.at : since0;
+      const pct = Math.min(100, ((today0 - from) / (next.at - from)) * 100);
+      const left = Math.round((next.at - today0) / 86400000);
+      return `<div class="quit">
+        <div class="top"><span class="name">${q.emoji} ${escapeHtml(q.label)}</span><span class="days">${days}<small> gün temiz</small></span></div>
+        <div class="progress"><div style="width:${pct}%"></div></div>
+        <div class="sub">${prev ? `✓ ${prev.label} · ` : ''}Sonraki: <b>${next.label}</b>, ${left} gün kaldı (${fmtShort(next.at)})</div>
+      </div>`;
+    }).join('');
+  }
+  function renderQuitEditor() {
+    const box = $('quitEditList');
+    box.innerHTML = '';
+    state.quits.forEach((q, i) => {
+      const row = document.createElement('div');
+      row.className = 'qrow';
+      row.innerHTML = `<input class="emo" maxlength="4" aria-label="Emoji"><input maxlength="30" aria-label="Ad"><button aria-label="Sil">×</button><input type="date" aria-label="Bırakma tarihi">`;
+      const [emo, label, del, date] = row.children;
+      emo.value = q.emoji; label.value = q.label; date.value = q.since; date.max = toDateInput(Date.now());
+      emo.onchange = () => { q.emoji = emo.value.trim(); save(); render(); };
+      label.onchange = () => { if (label.value.trim()) { q.label = label.value.trim(); save(); render(); } else label.value = q.label; };
+      date.onchange = () => { if (validDate(date.value)) { q.since = date.value; save(); render(); } else date.value = q.since; };
+      del.onclick = () => {
+        if (!confirm(`"${q.label}" listeden silinsin mi?`)) return;
+        state.quits.splice(i, 1);
+        save(); renderQuitEditor(); render();
+      };
+      box.append(row);
+    });
+  }
+
+  // ---------- daily check-in ----------
+  // After midnight but before wake-up, the check-in still belongs to the previous evening.
+  const checkinKey = (now = Date.now()) => toDateInput(eveningOf(now));
+  function renderCheckin(now = Date.now()) {
+    const key = checkinKey(now), c = state.checkins[key];
+    const h = new Date(now).getHours();
+    $('checkinPrompt').hidden = !!c || !(h >= 20 || eveningOf(now) < startOfDay(now));
+    $('checkinDay').textContent = eveningOf(now) < startOfDay(now) ? 'dün akşam için' : '';
+    if (!c) {
+      $('checkinBody').innerHTML = '<p class="hint" style="margin:0 0 12px">Bugün henüz değerlendirmedin. Ruh hali, sinirlilik, uyku, enerji ve öksürük, 30 saniye.</p>'
+        + '<button class="btn primary" style="width:100%" data-checkin>Değerlendir</button>';
+      return;
+    }
+    const parts = CHECKIN_SCALES.filter((x) => c[x.k] != null).map((x) => `<span>${x.emoji} ${x.short} <b>${c[x.k]}</b></span>`);
+    if (c.cough != null) parts.push(`<span>🫁 Öksürük <b>${COUGH[c.cough].toLocaleLowerCase('tr')}</b></span>`);
+    $('checkinBody').innerHTML = `<div class="ci-sum">${parts.join('')}</div>`
+      + (c.note ? `<p class="ci-note">“${escapeHtml(c.note)}”</p>` : '')
+      + '<button class="link-btn" style="display:block;margin:8px 0 0" data-checkin>Düzenle</button>';
+  }
+  let ciDraft = null, ciKey = null;
+  function openCheckin() {
+    ciKey = checkinKey();
+    ciDraft = { mood: null, irritability: null, sleep: null, energy: null, cough: null, note: '', ...(state.checkins[ciKey] || {}) };
+    $('checkinSub').textContent = new Date(parseDay(ciKey)).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const btns = (k, n, labels) => Array.from({ length: n }, (_, i) => {
+      const v = labels ? i : i + 1;
+      return `<button data-k="${k}" data-v="${v}" class="${ciDraft[k] === v ? 'on' : ''}">${labels ? labels[i] : v}</button>`;
+    }).join('');
+    $('ciScales').innerHTML = CHECKIN_SCALES.map((x) => `<div class="ci"><div class="ci-l">${x.emoji} ${x.label}<span>${x.hint}</span></div><div class="ci-s">${btns(x.k, 5)}</div></div>`).join('');
+    $('ciCough').innerHTML = btns('cough', 3, COUGH);
+    $('ciNote').value = ciDraft.note || '';
+    $('checkinDialog').showModal();
+  }
+  $('checkinDialog').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-k]');
+    if (!b) return;
+    const k = b.dataset.k, v = Number(b.dataset.v);
+    ciDraft[k] = ciDraft[k] === v ? null : v; // tap again to clear
+    b.parentElement.querySelectorAll('button').forEach((x) => x.classList.toggle('on', Number(x.dataset.v) === ciDraft[k]));
+  });
+  $('saveCheckin').onclick = () => {
+    ciDraft.note = $('ciNote').value.trim();
+    const clean = checkinMap({ [ciKey]: ciDraft })[ciKey];
+    if (clean) state.checkins[ciKey] = clean; else delete state.checkins[ciKey];
+    save(); render();
+    $('checkinDialog').close();
+    showToast('Günlük kontrol kaydedildi', false);
+  };
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-checkin]')) openCheckin(); });
+  $('checkinPrompt').onclick = openCheckin;
 
   // Which triggers led to cigarettes vs resisted cravings over the last 7 days (today included).
   function renderTriggerStats(now) {
@@ -877,7 +1470,7 @@
     const ids = state.triggers.map((x) => x.id).filter((id) => smoked.has(id) || resisted.has(id));
     const box = $('triggerStats');
     if (!ids.length) {
-      box.innerHTML = '<p class="hint" style="margin:0">Kayıt eklerken tetikleyici seçtikçe hangi durumların seni sigaraya ittiği burada görünecek.</p>';
+      box.innerHTML = `<p class="hint" style="margin:0">Kayıt eklerken tetikleyici seçtikçe hangi durumların seni ${P().toward} ittiği burada görünecek.</p>`;
       return;
     }
     ids.sort((a, b) => (smoked.get(b) || 0) - (smoked.get(a) || 0) || (resisted.get(b) || 0) - (resisted.get(a) || 0));
@@ -888,11 +1481,11 @@
       const pct = tagged ? Math.round((s / tagged) * 100) : 0;
       return `<div class="trow">
         <span>${tr.emoji} ${escapeHtml(tr.label)}</span>
-        <span class="tcount">${s ? `${s} sigara · %${pct}` : ''}${r ? `<span class="r">💪 ${r} direnildi</span>` : ''}</span>
+        <span class="tcount">${s ? `${s} ${P().unit} · %${pct}` : ''}${r ? `<span class="r">💪 ${r} direnildi</span>` : ''}</span>
         <div class="tbar"><div style="width:${(s / max) * 100}%"></div></div>
       </div>`;
     }).join('') + '</div>'
-      + `<p class="hsummary">Yüzdeler etiketli sigaralara göre. 💪 direndiğin istekler.${untagged ? ` Etiketsiz: ${untagged}.` : ''}</p>`;
+      + `<p class="hsummary">Yüzdeler etiketli ${P().units}a göre. 💪 direndiğin istekler.${untagged ? ` Etiketsiz: ${untagged}.` : ''}</p>`;
   }
   const escapeHtml = (str) => str.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -900,8 +1493,13 @@
   let sheet = null; // { kind, t, isNew, selected:Set }
   function openTriggerSheet(kind, t, isNew, sub = '') {
     sheet = { kind, t, isNew, selected: new Set(tagsFor(kind, t)) };
+    let hint = '';
+    if (kind === 'smoke' && isNew && !sheet.selected.size && triggerById('alcohol') && drankRecently(t)) {
+      sheet.selected.add('alcohol');
+      hint = ' · son 4 saatte içki var, Alkol seçili';
+    }
     $('triggerTitle').textContent = kind === 'smoke' ? 'Neden içtin?' : 'Ne tetikledi?';
-    $('triggerSub').textContent = sub || `${fmtTime(t)} · birden fazla seçebilirsin`;
+    $('triggerSub').textContent = (sub || `${fmtTime(t)} · birden fazla seçebilirsin`) + hint;
     $('undoFromSheet').hidden = !isNew;
     renderChips();
     $('triggerDialog').showModal();
@@ -988,7 +1586,7 @@
       const awake = awakeBetween(last, now);
       const note = !isAwakeAt(now) ? ' <span class="note">· uyku saati, sayaç duruyor</span>'
         : (now - last - awake >= 60000 ? ' <span class="note">· uyku hariç</span>' : '');
-      $('since').innerHTML = `Son sigaradan beri <b>${awake < 60000 && now - last >= 60000 ? '<1dk' : fmtDuration(awake)}</b>${note}`;
+      $('since').innerHTML = `${P().since} <b>${awake < 60000 && now - last >= 60000 ? '<1dk' : fmtDuration(awake)}</b>${note}`;
     }
 
     // Average gap = time awake so far today / cigarettes today.
@@ -998,7 +1596,7 @@
     if (today && awakeMs > 0) {
       el.innerHTML = `Ortalama ara <b>${fmtGap(awakeMs / today)}</b> <span class="note">· uyanık süreye göre</span>`;
     } else if (!today && awakeMs > 0) {
-      el.innerHTML = `Uyanalı <b>${fmtDuration(awakeMs)}</b>, bugün henüz sigara yok`;
+      el.innerHTML = `Uyanalı <b>${fmtDuration(awakeMs)}</b>, bugün henüz ${P().unit} yok`;
     } else {
       el.textContent = '';
     }
@@ -1015,7 +1613,7 @@
       if (now < target) {
         box.classList.remove('done');
         const day = startOfDay(target) > startOfDay(now) ? 'yarın ' : '';
-        $('gapGoalText').innerHTML = `Sonraki sigara için en erken <b>${day}${fmtTime(target)}</b> · ${fmtDuration(awakeBetween(now, target) + 59999)} kaldı`;
+        $('gapGoalText').innerHTML = `${P().next} <b>${day}${fmtTime(target)}</b> · ${fmtDuration(awakeBetween(now, target) + 59999)} kaldı`;
         $('gapGoalFill').style.width = Math.min(100, (awakeBetween(last, now) / goalMs) * 100) + '%';
       } else {
         box.classList.add('done');
@@ -1074,7 +1672,7 @@
     } else if (!total) {
       parts.push(`${title}: kayıt yok.`);
     } else {
-      parts.push(`${title}: <b>${total}</b> sigara` + (days > 1 ? ` · günde ort. <b>${(Math.round((total / days) * 10) / 10).toLocaleString('tr-TR')}</b>` : ''));
+      parts.push(`${title}: <b>${total}</b> ${P().unit}` + (days > 1 ? ` · günde ort. <b>${(Math.round((total / days) * 10) / 10).toLocaleString('tr-TR')}</b>` : ''));
       if (awakeMin > 0) parts.push(`Ortalama ara <b>${fmtGap((awakeMin * 60000) / total)}</b> (uyanık ${state.wake}–${state.sleep})`);
       const peak = hours.indexOf(Math.max(...hours));
       if (hours[peak] >= 2) parts.push(`En yoğun saat <b>${pad2(peak)}:00–${pad2((peak + 1) % 24)}:00</b>`);
@@ -1105,7 +1703,6 @@
     return prev == null ? 0 : Math.max(0, state.minGap * 60000 - awakeBetween(prev, t));
   }
 
-  let lastAdded = null; // { kind, t } for the toast's undo
   function afterAdd(kind, t, msg) {
     lastAdded = { kind, t };
     if (navigator.vibrate) navigator.vibrate(30);
@@ -1116,11 +1713,11 @@
   $('logBtn').onclick = () => {
     const t = Date.now();
     const lastT = state.entries[state.entries.length - 1];
-    if (lastT != null && t - lastT < 60000 && !confirm('Son kayıttan bu yana 1 dakika geçmedi. Yeni bir sigara olarak eklensin mi?')) return;
+    if (lastT != null && t - lastT < 60000 && !confirm(`Son kayıttan bu yana 1 dakika geçmedi. Yeni bir ${P().unit} olarak eklensin mi?`)) return;
     const early = earlyBy(t);
     addEntry(t);
     const c = countsByDay().get(dayKey(t));
-    afterAdd('smoke', t, `Bugün ${c}. sigara` + (early >= 60000 ? ` · hedef aradan ${fmtDuration(early)} erken` : ''));
+    afterAdd('smoke', t, `Bugün ${c}. ${P().unit}` + (early >= 60000 ? ` · hedef aradan ${fmtDuration(early)} erken` : ''));
   };
   $('cravingBtn').onclick = () => {
     const t = Date.now();
@@ -1139,7 +1736,7 @@
     toastTimer = setTimeout(() => $('toast').classList.remove('show'), 5000);
   }
   $('undoBtn').onclick = () => {
-    if (lastAdded) { removeItem(lastAdded.kind, lastAdded.t); lastAdded = null; save(); render(); }
+    if (lastAdded) { removeItem(lastAdded.kind, lastAdded.t, lastAdded.type); lastAdded = null; save(); render(); }
     $('toast').classList.remove('show');
   };
 
@@ -1176,7 +1773,7 @@
     const items = dayItems(day0);
     const tagged = items.filter((t) => tagsFor('smoke', t).length).length;
     const { start, end } = awakeWindow(day0);
-    $('editDayHint').textContent = `Şu an ${items.length} kayıt var. Kaydedince sigaralar ${fmtTime(start)}–${fmtTime(end)} arasına eşit dağıtılır.`
+    $('editDayHint').textContent = `Şu an ${items.length} kayıt var. Kaydedince ${P().units} ${fmtTime(start)}–${fmtTime(end)} arasına eşit dağıtılır.`
       + (tagged ? ` O günün ${tagged} kaydındaki tetikleyiciler silinir.` : '');
   }
   function openEditDay(day0) {
@@ -1211,7 +1808,7 @@
     save(); render();
     $('editDayDialog').close();
     const label = new Date(day0).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
-    showToast(`${label}: ${n} sigara, gün içine dağıtıldı`, false);
+    showToast(`${label}: ${n} ${P().unit}, gün içine dağıtıldı`, false);
   };
 
   $('openBackfill').onclick = () => {
@@ -1229,12 +1826,35 @@
   };
 
   function openSettings(focusTriggers = false) {
-    $('limitInput').value = state.limit ?? '';
+    $('productInput').value = state.product;
+    const t0 = startOfDay(Date.now());
+    syncLimitField();
+    const tp = state.taper;
+    $('taperEnabled').checked = tp.enabled;
+    $('taperStart').value = tp.start || toDateInput(t0);
+    $('taperStartValue').value = tp.startValue;
+    $('taperStep').value = tp.step;
+    $('taperInterval').value = tp.interval;
+    $('taperFloor').value = tp.floor;
+    updateTaperPreview();
     $('wakeInput').value = state.wake;
     $('sleepInput').value = state.sleep;
     $('minGapInput').value = state.minGap ?? '';
     $('packSizeInput').value = state.packSize;
     $('askTriggerInput').checked = state.askTrigger;
+    $('unitBeer').value = state.drinkUnits.beer;
+    $('unitWine').value = state.drinkUnits.wine;
+    $('unitOther').value = state.drinkUnits.other;
+    $('alcFreeGoalInput').value = state.alcFreeGoal;
+    renderQuitEditor();
+    $('packPriceInput').value = state.packPrice ?? '';
+    $('baselineInput').value = state.baselinePerDay;
+    $('baselineLabel').textContent = `Önceki tüketim (günde ${P().unit})`;
+    $('priceBeer').value = state.drinkPrice.beer ?? '';
+    $('priceWine').value = state.drinkPrice.wine ?? '';
+    $('priceOther').value = state.drinkPrice.other ?? '';
+    $('newQuitDate').value = toDateInput(Date.now());
+    $('newQuitDate').max = toDateInput(Date.now());
     renderTriggerList();
     $('settingsDialog').showModal();
     if (focusTriggers) $('triggerList').scrollIntoView({ block: 'center' });
@@ -1244,7 +1864,15 @@
   $('saveSettings').onclick = () => {
     const v = $('limitInput').value.trim();
     const n = v === '' ? null : Math.max(0, Math.floor(Number(v)));
-    state.limit = Number.isFinite(n) ? n : null;
+    const value = Number.isFinite(n) ? n : null;
+    const t0 = startOfDay(Date.now()), plan = planFor(t0);
+    if (plan != null) {
+      // With a plan on, a different value is a one-day override; the plan's own value clears it.
+      state.limitOverride = value === plan ? null : { day: toDateInput(t0), value };
+    } else {
+      state.limit = value;
+      state.limitOverride = null;
+    }
     const wake = $('wakeInput').value, sleep = $('sleepInput').value;
     if (validTime(wake)) state.wake = wake;
     if (validTime(sleep)) state.sleep = sleep;
@@ -1253,9 +1881,76 @@
     state.minGap = Number.isFinite(gn) && gn > 0 ? gn : null;
     const ps = Math.floor(Number($('packSizeInput').value));
     state.packSize = Number.isFinite(ps) && ps > 0 ? ps : 20;
+    state.product = $('productInput').value === 'cigarette' ? 'cigarette' : 'iqos';
     save(); render();
     $('settingsDialog').close();
-    showToast(state.limit != null ? `Günlük hedef: ${state.limit}` : 'Hedef kaldırıldı', false);
+    const lim = limitFor(startOfDay(Date.now()));
+    showToast(lim != null ? `Günlük hedef: ${lim}` : 'Hedef kaldırıldı', false);
+  };
+  // The daily-limit field shows today's effective limit and explains when a plan is in charge.
+  function syncLimitField() {
+    const t0 = startOfDay(Date.now()), plan = planFor(t0);
+    $('limitInput').value = limitFor(t0) ?? '';
+    $('limitHint').textContent = plan != null
+      ? `Plan açık, bugünkü plan değeri ${plan}. Buraya farklı bir değer yazarsan sadece bugün için geçerli olur.`
+      : 'Hedefi her hafta 1 azaltmak, yavaş ama kalıcı bir bırakma yöntemidir.';
+  }
+  function readTaperForm() {
+    const num = (id) => Math.floor(Number($(id).value));
+    return taperOf({
+      enabled: $('taperEnabled').checked, start: $('taperStart').value, startValue: num('taperStartValue'),
+      step: num('taperStep'), interval: num('taperInterval'), floor: num('taperFloor'),
+    });
+  }
+  // Shows the next few steps of the plan as it is in the form.
+  function updateTaperPreview() {
+    const tp = readTaperForm();
+    if (!tp.start) { $('taperPreview').textContent = ''; return; }
+    const s0 = parseDay(tp.start), steps = [`${fmtShort(s0)}: ${tp.startValue}`];
+    let v = tp.startValue, k = 0;
+    while (v > tp.floor && steps.length < 5) { k++; v = Math.max(tp.floor, v - tp.step); steps.push(`${fmtShort(addDays(s0, k * tp.interval))}: ${v}`); }
+    let end = '';
+    if (tp.startValue > tp.floor) {
+      const n = Math.ceil((tp.startValue - tp.floor) / tp.step);
+      end = ` · ${tp.floor} tabanına ${fmtShort(addDays(s0, n * tp.interval))} günü ulaşılır`;
+    }
+    $('taperPreview').textContent = steps.join(' → ') + (v > tp.floor ? ' …' : '') + end;
+  }
+  ['taperEnabled', 'taperStart', 'taperStartValue', 'taperStep', 'taperInterval', 'taperFloor'].forEach((id) => { $(id).oninput = updateTaperPreview; });
+  $('saveTaper').onclick = () => {
+    const tp = readTaperForm();
+    if (tp.enabled && !tp.start) { alert('Başlangıç günü seç.'); return; }
+    if (tp.floor > tp.startValue) { alert('Taban, başlangıç hedefinden büyük olamaz.'); return; }
+    state.taper = tp;
+    state.limitOverride = null;
+    save(); render();
+    const t0 = startOfDay(Date.now());
+    syncLimitField();
+    showToast(tp.enabled ? `Plan kaydedildi. Bugünkü hedef: ${limitFor(t0) ?? '–'}` : 'Plan kapatıldı', false);
+  };
+  $('saveMoney').onclick = () => {
+    const num = (id) => { const v = $(id).value.trim(); return v === '' ? null : price(Math.round(Number(v) * 100) / 100); };
+    state.packPrice = num('packPriceInput');
+    state.drinkPrice = { beer: num('priceBeer'), wine: num('priceWine'), other: num('priceOther') };
+    state.baselinePerDay = intIn(Math.floor(Number($('baselineInput').value)), 1, 100, state.baselinePerDay);
+    save(); render();
+    showToast('Fiyatlar kaydedildi', false);
+  };
+  $('addQuit').onclick = () => {
+    const label = $('newQuitLabel').value.trim(), since = $('newQuitDate').value;
+    if (!label) { $('newQuitLabel').focus(); return; }
+    if (!validDate(since)) { alert('Bir tarih seç.'); return; }
+    state.quits.push({ id: 'q' + Date.now().toString(36), label, emoji: $('newQuitEmoji').value.trim() || '✓', since });
+    $('newQuitLabel').value = ''; $('newQuitEmoji').value = '';
+    save(); renderQuitEditor(); render();
+  };
+  $('saveDrinkSettings').onclick = () => {
+    const u = (id, k) => { const v = Number($(id).value); return Number.isFinite(v) && v > 0 && v <= 10 ? Math.round(v * 10) / 10 : state.drinkUnits[k]; };
+    state.drinkUnits = { beer: u('unitBeer', 'beer'), wine: u('unitWine', 'wine'), other: u('unitOther', 'other') };
+    const g = Math.floor(Number($('alcFreeGoalInput').value));
+    if (Number.isFinite(g) && g >= 0 && g <= 7) state.alcFreeGoal = g;
+    save(); render();
+    showToast('Alkol ayarları kaydedildi. Yeni birimler bundan sonraki kayıtlara uygulanır.', false);
   };
   $('exportBtn').onclick = () => {
     const blob = new Blob([JSON.stringify({ app: 'smoke-tracker', version: 1, ...state }, null, 2)], { type: 'application/json' });
@@ -1285,7 +1980,7 @@
   };
   $('resetBtn').onclick = () => {
     if (!confirm('Tüm kayıtlar kalıcı olarak silinecek. Emin misin?')) return;
-    state = { ...state, entries: [], resisted: [], tags: {}, rtags: {}, spreadDays: [], experiments: [] };
+    state = { ...state, entries: [], resisted: [], tags: {}, rtags: {}, spreadDays: [], experiments: [], nrt: [], drinks: [], checkins: {} };
     save(); render();
     $('settingsDialog').close();
   };
@@ -1309,6 +2004,38 @@
     const T = [[1, 12.71], [2, 4.3], [3, 3.18], [4, 2.78], [5, 2.57], [6, 2.45], [7, 2.36], [8, 2.31], [9, 2.26], [10, 2.23], [12, 2.18], [15, 2.13], [20, 2.09], [30, 2.04]];
     for (const [d, v] of T) if (df <= d) return v;
     return 1.96;
+  }
+  // Welch's t-test on two samples. Returns null when either side has fewer than 2 values.
+  function welch(a, b) {
+    if (a.length < 2 || b.length < 2) return null;
+    const diff = mean(a) - mean(b);
+    if (diff === 0) return { diff, sig: false };
+    const va = stdev(a) ** 2 / a.length, vb = stdev(b) ** 2 / b.length, se = Math.sqrt(va + vb);
+    if (se === 0) return { diff, sig: true };
+    const den = va ** 2 / (a.length - 1) + vb ** 2 / (b.length - 1);
+    const df = den > 0 ? (va + vb) ** 2 / den : a.length + b.length - 2;
+    return { diff, sig: Math.abs(diff) / se > tCrit(Math.floor(df)) };
+  }
+  // Two-group comparison for the analysis cards: n, mean ± SD, difference and a cautious verdict.
+  // better: 'down' / 'up' says which direction of (A − B) is good; null for a neutral comparison.
+  function compareBlock({ what, labelA, a, labelB, b, better = null, fmt = (v) => fmtN(v) }) {
+    const row = (label, v) => `<tr><td>${label}</td><td>${v.length}</td><td>${v.length ? fmt(mean(v)) : '–'}</td><td>${v.length > 1 ? '±' + fmtN(stdev(v)) : '–'}</td></tr>`;
+    const minN = Math.min(a.length, b.length);
+    let verdict, cls = 'neutral';
+    if (minN < 3) {
+      verdict = `Henüz yeterli veri yok. İki tarafta da en az 3 gün gerek (şu an ${a.length} ve ${b.length}).`;
+    } else {
+      const w = welch(a, b);
+      if (w.diff === 0) verdict = 'Fark yok.';
+      else if (w.sig) {
+        verdict = `Fark anlamlı görünüyor (yaklaşık %95)${minN < 7 ? ', ama veri az, dikkatli yorumla' : ''}.`;
+        if (better) cls = (better === 'down' ? w.diff < 0 : w.diff > 0) ? 'good' : 'bad';
+      } else verdict = 'Fark gürültü içinde. Şimdilik bir ilişki söylenemez.';
+    }
+    const diff = a.length && b.length ? fmtSigned(mean(a) - mean(b)) : '–';
+    return `<div class="tbl-wrap"><table class="tbl"><tr><th>${what}</th><th>Gün</th><th>Ort.</th><th>Sapma</th></tr>`
+      + `${row(labelA, a)}${row(labelB, b)}<tr class="sum"><td>Fark</td><td></td><td>${diff}</td><td></td></tr></table></div>`
+      + `<p class="verdict ${cls}">${verdict}</p>`;
   }
   const fmtN = (x, digits = 1) => (x == null || !Number.isFinite(x) ? '–' : (Math.round(x * 10 ** digits) / 10 ** digits).toLocaleString('tr-TR'));
   const fmtSigned = (x, digits = 1) => {
@@ -1342,6 +2069,14 @@
   function dayMetrics(day0) {
     const ts = smokesOn(day0);
     const m = { day0, count: ts.length, spread: isSpreadDay(day0, ts), first: null, first2h: null, late: null, auto: null, p50: null, gaps: [] };
+    // Alcohol metrics start on the evening of the first logged drink; earlier days were simply not logged.
+    const drinkStart = state.drinks.length ? eveningOf(state.drinks[0].t) : Infinity;
+    const dl = drinksOn(day0), c = checkinOf(day0);
+    m.drinks = day0 >= drinkStart ? dl.length : null;
+    m.alcfree = day0 >= drinkStart ? (dl.length ? 0 : 100) : null;
+    m.gum = nrtCount(day0, 'gum');
+    m.irritability = c ? c.irritability : null;
+    m.sleep = c ? c.sleep : null;
     if (m.spread) return m;
     m.gaps = ts.slice(1).map((t, i) => awakeBetween(ts[i], t) / 60000);
     m.p50 = m.gaps.length ? median(m.gaps) : null;
@@ -1357,14 +2092,20 @@
 
   // Metrics that can be tracked per day and used in experiments.
   const METRICS = {
-    count: { label: 'Günlük sigara', better: 'down', fmt: (v) => fmtN(v), unit: '' },
-    first2h: { label: 'İlk 2 saatteki sigara', better: 'down', fmt: (v) => fmtN(v), unit: '' },
-    late: { label: '21:00 sonrası sigara', better: 'down', fmt: (v) => fmtN(v), unit: '' },
-    auto: { label: 'Otomatik sigara payı', better: 'down', fmt: (v) => (v == null ? '–' : '%' + fmtN(v, 0)), unit: ' puan' },
+    count: { get label() { return 'Günlük ' + P().unit; }, better: 'down', fmt: (v) => fmtN(v), unit: '' },
+    first2h: { get label() { return 'İlk 2 saatteki ' + P().unit; }, better: 'down', fmt: (v) => fmtN(v), unit: '' },
+    late: { get label() { return '21:00 sonrası ' + P().unit; }, better: 'down', fmt: (v) => fmtN(v), unit: '' },
+    auto: { get label() { return 'Otomatik ' + P().unit + ' payı'; }, better: 'down', fmt: (v) => (v == null ? '–' : '%' + fmtN(v, 0)), unit: ' puan' },
     p50: { label: 'Medyan ara', better: 'up', fmt: (v) => (v == null ? '–' : fmtN(v, 0) + ' dk'), unit: ' dk' },
-    first: { label: 'İlk sigara saati', better: 'up', fmt: fmtClock, unit: ' dk' },
+    first: { get label() { return 'İlk ' + P().unit + ' saati'; }, better: 'up', fmt: fmtClock, unit: ' dk' },
+    drinks: { label: 'Günlük içki', better: 'down', fmt: (v) => fmtN(v), unit: '', digits: 1 },
+    alcfree: { label: 'Alkolsüz gün payı', better: 'up', fmt: (v) => (v == null ? '–' : '%' + fmtN(v, 0)), unit: ' puan' },
+    gum: { label: 'Nikotin sakızı / gün', better: null, fmt: (v) => fmtN(v), unit: '', digits: 1 },
+    irritability: { label: 'Sinirlilik (1–5)', better: 'down', fmt: (v) => fmtN(v), unit: '', digits: 1 },
+    sleep: { label: 'Uyku puanı (1–5)', better: 'up', fmt: (v) => fmtN(v), unit: '', digits: 1 },
   };
-  const isGood = (key, diff) => (METRICS[key].better === 'down' ? diff < 0 : diff > 0);
+  // null for metrics without a good direction (e.g. NRT gum while starting replacement therapy).
+  const isGood = (key, diff) => (METRICS[key].better == null ? null : METRICS[key].better === 'down' ? diff < 0 : diff > 0);
 
   const svg = (w, h, inner) => `<svg viewBox="0 0 ${w} ${h}" width="100%" style="display:block;overflow:visible" aria-hidden="true">${inner}</svg>`;
   function rangeDays(n, today0) {
@@ -1412,9 +2153,12 @@
     renderHeatmap(days, today0);
     renderTriggerProfile(days);
     renderRoutine(days, prevDays, today0);
+    renderNrtCard(days, today0);
+    renderCheckinCard(days, prevDays);
+    renderRelations(days, today0);
     const spreadN = days.filter((d) => d.spread).length;
     const span = Math.round((today0 - trackedStart()) / DAY) + 1;
-    $('anDataNote').innerHTML = `Toplam ${state.entries.length} sigara ve ${state.resisted.length} direnilen istek, ${span} gün.`
+    $('anDataNote').innerHTML = `Toplam ${state.entries.length} ${P().unit} ve ${state.resisted.length} direnilen istek, ${span} gün.`
       + (spreadN ? ` Bu dönemde ${spreadN} günün saatleri tahmini (~), saat bazlı metriklere katılmadı.` : '')
       + ' CSV her kaydı tarih, saat, tür ve tetikleyicilerle verir. Sheets veya Grafana\'ya doğrudan yüklenebilir.';
   }
@@ -1431,7 +2175,8 @@
       return mean(w);
     });
     const n = days.length, W = 340, H = 150, top = 16, bottom = 18, ch = H - top - bottom, bw = W / n;
-    const max = Math.max(1, state.limit || 0, ...days.map((d) => d.count), ...ma.filter((v) => v != null));
+    const lim = limitFor(today0);
+    const max = Math.max(1, lim || 0, ...days.map((d) => d.count), ...ma.filter((v) => v != null));
     const y = (v) => top + ch * (1 - v / max);
     const every = n <= 7 ? 1 : n <= 14 ? 2 : 5;
     let g = '';
@@ -1443,7 +2188,7 @@
     });
     const pts = ma.map((v, i) => (v == null ? null : `${i * bw + bw / 2},${y(v)}`)).filter(Boolean);
     if (pts.length > 1) g += `<polyline class="c-line" points="${pts.join(' ')}"/>`;
-    if (state.limit) g += `<line class="c-limit" x1="0" x2="${W}" y1="${y(state.limit)}" y2="${y(state.limit)}"/>`;
+    if (lim) g += `<line class="c-limit" x1="0" x2="${W}" y1="${y(lim)}" y2="${y(lim)}"/>`;
 
     // Linear trend over complete days only, with a 95% interval for the slope.
     const comp = days.filter((d) => d.day0 < today0);
@@ -1459,13 +2204,13 @@
       const sse = ys.reduce((s, v, i) => s + (v - (a + b * xs[i])) ** 2, 0);
       const se = Math.sqrt(sse / (comp.length - 2) / sxx);
       const tc = tCrit(comp.length - 2), lo = b - tc * se, hi = b + tc * se;
-      text = `Eğim: günde <b>${fmtSigned(b)}</b> sigara <span class="note">· %95 aralık ${fmtSigned(lo)} … ${fmtSigned(hi)} · ${comp.length} güne göre</span>`;
+      text = `Eğim: günde <b>${fmtSigned(b)}</b> ${P().unit} <span class="note">· %95 aralık ${fmtSigned(lo)} … ${fmtSigned(hi)} · ${comp.length} güne göre</span>`;
       const yLast = a + b * (comp.length - 1);
       if (hi < 0 && yLast > 2) {
         const target = Math.max(1, Math.floor(yLast / 2));
         const when = new Date(addDays(comp[comp.length - 1].day0, Math.ceil((target - yLast) / b)))
           .toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
-        text += `<br>Bu eğim sürerse günde ${target} sigaraya yaklaşık <b>${when}</b> civarı inersin. <span class="note">Doğrusal tahmin.</span>`;
+        text += `<br>Bu eğim sürerse günde ${target} ${P().dat} yaklaşık <b>${when}</b> civarı inersin. <span class="note">Doğrusal tahmin.</span>`;
       } else if (lo > 0) {
         text += '<br>Sayı istatistiksel olarak artıyor.';
       } else {
@@ -1477,7 +2222,7 @@
       text += `<br>Günlük ortalama <b>${fmtN(cur)}</b> · önceki ${prevDays.length} gün ${fmtN(prev)} <span class="note">(${fmtSigned(cur - prev)})</span>`;
     }
     $('anTrend').innerHTML = svg(W, H, g)
-      + `<div class="legend-row"><span><i class="lg-bar"></i>günlük</span><span><i class="lg-line"></i>7 gün ort.</span>${state.limit ? '<span><i class="lg-limit"></i>hedef</span>' : ''}</div>`
+      + `<div class="legend-row"><span><i class="lg-bar"></i>günlük</span><span><i class="lg-line"></i>7 gün ort.</span>${lim ? '<span><i class="lg-limit"></i>hedef</span>' : ''}</div>`
       + `<p class="an-text">${text}</p>`;
   }
 
@@ -1485,7 +2230,7 @@
   function renderGapCard(days, prevDays, today0) {
     const gaps = days.flatMap((d) => d.gaps), prevGaps = prevDays.flatMap((d) => d.gaps);
     if (!gaps.length) {
-      $('anGaps').innerHTML = '<p class="hint" style="margin:0">Bu dönemde aynı gün içinde en az iki sigara yok.</p>';
+      $('anGaps').innerHTML = `<p class="hint" style="margin:0">Bu dönemde aynı gün içinde en az iki ${P().unit} yok.</p>`;
       return;
     }
     const goal = state.minGap;
@@ -1543,7 +2288,7 @@
     const comp = days.filter((d) => d.day0 < today0);
     const wk = comp.filter((d) => { const w = new Date(d.day0).getDay(); return w >= 1 && w <= 5; }).map((d) => d.count);
     const we = comp.filter((d) => { const w = new Date(d.day0).getDay(); return w === 0 || w === 6; }).map((d) => d.count);
-    const lines = ['Koyu hücre: o gün ve saatte gün başına daha çok sigara.'];
+    const lines = [`Koyu hücre: o gün ve saatte gün başına daha çok ${P().unit}.`];
     if (best) lines.push(`En yoğun: <b>${DAY_NAMES[WEEK_ORDER[best.r]]} ${pad2(best.h)}:00–${pad2((best.h + 1) % 24)}:00</b> <span class="note">(gün başına ${fmtN(best.v)})</span>`);
     if (wk.length && we.length) lines.push(`Hafta içi ort. <b>${fmtN(mean(wk))}</b> · hafta sonu ort. <b>${fmtN(mean(we))}</b>`);
     $('anHeat').innerHTML = svg(W, H, g) + `<p class="an-text">${lines.join('<br>')}</p>`;
@@ -1581,13 +2326,13 @@
     }).join('');
     const strongest = list.filter(([, r]) => r.gaps.length >= 2).sort((a, b) => median(a[1].gaps) - median(b[1].gaps))[0];
     const weakest = list.filter(([, r]) => r.gaps.length >= 2).sort((a, b) => median(b[1].gaps) - median(a[1].gaps))[0];
-    const notes = [`Etiketli: ${tagged}/${total} sigara.`];
+    const notes = [`Etiketli: ${tagged}/${total} ${P().unit}.`];
     if (strongest && weakest && strongest[0] !== weakest[0]) {
       notes.push(`En güçlü istek <b>${escapeHtml(triggerById(strongest[0]).label)}</b> (önceki ara ${fmtN(median(strongest[1].gaps), 0)} dk), en zayıf <b>${escapeHtml(triggerById(weakest[0]).label)}</b> (${fmtN(median(weakest[1].gaps), 0)} dk).`);
     }
     $('anTriggers').innerHTML = `<div class="tbl-wrap"><table class="tbl"><tr><th>Tetikleyici</th><th>n</th><th>Pay</th><th>Önceki ara</th><th>Saat</th><th>💪</th></tr>${body}</table></div>`
       + `<p class="an-text">${notes.join('<br>')}</p>`
-      + '<p class="an-foot">Önceki ara: o sigaradan önce geçen uyanık süre, medyan. Kısa ara güçlü istek demek. Saat: en sık görüldüğü saat. 💪 direnilen istek.</p>';
+      + `<p class="an-foot">Önceki ara: o ${P().abl} önce geçen uyanık süre, medyan. Kısa ara güçlü istek demek. Saat: en sık görüldüğü saat. 💪 direnilen istek.</p>`;
   }
 
   function renderRoutine(days, prevDays, today0) {
@@ -1612,18 +2357,121 @@
       }).join('')}</tr>`;
     }
     $('anRoutine').innerHTML = `<div class="tbl-wrap"><table class="tbl"><tr><th>Gün</th><th>Sayı</th><th>İlk</th><th>İlk 2s</th><th>21+</th><th>Oto</th><th>p50</th></tr>${body}</table></div>`
-      + '<p class="an-foot">İlk 2s: ilk sigaradan sonraki 2 saatte içilen, ilki dahil. 21+: 21:00 sonrası. Oto: Alışkanlık ve Sıkılma etiketli sigaraların etiketlilere oranı. p50: gün içi medyan ara, dk. * Bugün devam ediyor, ortalamalara katılmaz. ~ saatleri tahmini gün. Fark: yeşil iyi yönde.</p>';
+      + `<p class="an-foot">İlk 2s: ilk ${P().abl} sonraki 2 saatte içilen, ilki dahil. 21+: 21:00 sonrası. Oto: Alışkanlık ve Sıkılma etiketli ${P().units}ın etiketlilere oranı. p50: gün içi medyan ara, dk. * Bugün devam ediyor, ortalamalara katılmaz. ~ saatleri tahmini gün. Fark: yeşil iyi yönde.</p>`;
+  }
+
+  function renderNrtCard(days, today0) {
+    const box = $('anNrt');
+    if (!state.nrt.length) {
+      box.innerHTML = '<p class="hint" style="margin:0">Bant, sakız veya pastil kaydettikçe burada bantlı ve bantsız günler karşılaştırılacak.</p>';
+      return;
+    }
+    const comp = days.filter((d) => d.day0 < today0);
+    const on = comp.filter((d) => isPatchDay(d.day0)).map((d) => d.count);
+    const off = comp.filter((d) => !isPatchDay(d.day0)).map((d) => d.count);
+    const per = (type) => mean(comp.map((d) => nrtCount(d.day0, type)));
+    box.innerHTML = compareBlock({ what: `${cap(P().unit)} / gün`, labelA: '🩹 Bantlı gün', a: on, labelB: 'Bantsız gün', b: off, better: 'down' })
+      + `<p class="an-text">Günde ort. 🍬 ${fmtN(per('gum'))} sakız · 💊 ${fmtN(per('lozenge'))} pastil · 💨 ${fmtN(per('spray'))} sprey</p>`
+      + '<p class="an-foot">Bantlı gün: o gün en az 1 saat bant takılı. Sadece tamamlanmış günler sayılır.</p>';
+  }
+
+  const checkinOf = (day0) => state.checkins[toDateInput(day0)] || null;
+  function sparkline(vals, lo, hi) {
+    const W = 70, H = 22, n = vals.length;
+    const pts = vals.map((v, i) => (v == null ? null : [n > 1 ? (i / (n - 1)) * (W - 4) + 2 : W / 2, H - 2 - ((v - lo) / (hi - lo)) * (H - 4)]));
+    const segs = [];
+    let cur = [];
+    for (const p of pts) { if (p) cur.push(p); else if (cur.length) { segs.push(cur); cur = []; } }
+    if (cur.length) segs.push(cur);
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true">${segs.map((sg) => (sg.length > 1 ? `<polyline points="${sg.map((p) => p.join(',')).join(' ')}"/>` : '')).join('')}`
+      + `${pts.filter(Boolean).map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.6"/>`).join('')}</svg>`;
+  }
+  function renderCheckinCard(days, prevDays) {
+    const box = $('anCheckin');
+    const cur = days.map((d) => checkinOf(d.day0)), prev = prevDays.map((d) => checkinOf(d.day0));
+    const n = cur.filter(Boolean).length;
+    if (!n) {
+      box.innerHTML = '<p class="hint" style="margin:0">Bu dönemde günlük kontrol yok. Bugün ekranından akşamları 30 saniyede doldurabilirsin.</p>';
+      return;
+    }
+    const rows = [...CHECKIN_SCALES, { k: 'cough', short: 'Öksürük', emoji: '🫁', better: 'down', lo: 0, hi: 2 }].map((x) => {
+      const vals = cur.map((c) => (c ? c[x.k] : null));
+      const a = mean(vals.filter((v) => v != null)), b = mean(prev.map((c) => (c ? c[x.k] : null)).filter((v) => v != null));
+      const diff = a != null && b != null ? a - b : null;
+      const cls = diff == null || Math.abs(diff) < 0.05 ? '' : (x.better === 'down' ? diff < 0 : diff > 0) ? 'good' : 'bad';
+      return `<tr><td>${x.emoji} ${x.short}</td><td>${fmtN(a)}</td><td>${fmtN(b)}</td><td class="${cls}">${fmtSigned(diff)}</td><td>${sparkline(vals, x.lo ?? 1, x.hi ?? 5)}</td></tr>`;
+    }).join('');
+    box.innerHTML = `<div class="tbl-wrap"><table class="tbl"><tr><th>Ölçüm</th><th>Ort.</th><th>Önceki</th><th>Fark</th><th>Gün gün</th></tr>${rows}</table></div>`
+      + `<p class="an-foot">${n}/${days.length} günde kontrol var. Ölçekler 1–5, öksürük 0 yok · 1 az · 2 çok. Fark: yeşil iyi yönde.</p>`;
+  }
+
+  // Day-level comparisons between IQOS, alcohol, sleep, irritability and patch use in the selected period.
+  function renderRelations(days, today0) {
+    const comp = days.filter((d) => d.day0 < today0);
+    const ci = (day0, k) => { const c = checkinOf(day0); return c ? c[k] : null; };
+    const block = (title, q, opts) => `<div class="rel"><h3>${title}</h3><p class="q">${q}</p>${compareBlock(opts)}</div>`;
+    const unit = cap(P().unit);
+    const parts = [];
+
+    // 1) Sticks on drinking days vs alcohol-free days.
+    parts.push(block(`🍺 Alkol ve ${P().name}`, `İçki içilen günlerde ${P().unit} sayısı alkolsüz günlerden farklı mı?`, {
+      what: `${unit} / gün`, labelA: 'İçilen gün', a: comp.filter((d) => drinksOn(d.day0).length).map((d) => d.count),
+      labelB: 'Alkolsüz gün', b: comp.filter((d) => !drinksOn(d.day0).length).map((d) => d.count),
+    }));
+
+    // 2) Sleep score vs the previous evening's drinking.
+    const sleepDays = days.filter((d) => ci(d.day0, 'sleep') != null);
+    const after = sleepDays.filter((d) => drinksOn(addDays(d.day0, -1)).length);
+    const unitsBefore = mean(after.map((d) => sumUnits(drinksOn(addDays(d.day0, -1)))));
+    parts.push(block('😴 Önceki akşam alkol ve uyku', `İçki içilen akşamın ertesi uyku puanı (1–5).${after.length ? ` O akşamlar ort. ${fmtN(unitsBefore)} birim.` : ''}`, {
+      what: 'Uyku', labelA: 'İçkili akşam sonrası', a: after.map((d) => ci(d.day0, 'sleep')),
+      labelB: 'Alkolsüz akşam sonrası', b: sleepDays.filter((d) => !drinksOn(addDays(d.day0, -1)).length).map((d) => ci(d.day0, 'sleep')),
+    }));
+
+    // 3) Irritability on high vs low IQOS days (split at the period median).
+    const irr = comp.filter((d) => ci(d.day0, 'irritability') != null);
+    const med = median(irr.map((d) => d.count));
+    const hi = irr.filter((d) => d.count > med), lo = irr.filter((d) => d.count <= med);
+    parts.push(block(`😤 Sinirlilik ve ${P().name} sayısı`, irr.length ? `Günler dönemin medyanına (${fmtN(med)} ${P().unit}) göre ikiye ayrıldı.` : 'Sinirlilik puanı olan günler gerekli.', {
+      what: 'Sinirlilik', labelA: `Çok (> ${fmtN(med)})`, a: hi.map((d) => ci(d.day0, 'irritability')),
+      labelB: `Az (≤ ${fmtN(med)})`, b: lo.map((d) => ci(d.day0, 'irritability')),
+    }));
+
+    // 4) Irritability on patch days vs other days.
+    parts.push(block('🩹 Sinirlilik ve bant', 'Bant takılı günlerde sinirlilik farklı mı?', {
+      what: 'Sinirlilik', labelA: 'Bantlı gün', a: irr.filter((d) => isPatchDay(d.day0)).map((d) => ci(d.day0, 'irritability')),
+      labelB: 'Bantsız gün', b: irr.filter((d) => !isPatchDay(d.day0)).map((d) => ci(d.day0, 'irritability')),
+    }));
+
+    $('anRelations').innerHTML = parts.join('')
+      + '<p class="an-foot">Gün düzeyinde karşılaştırma, Welch t-testi. Bunlar ilişki, neden-sonuç değil. Az veriyle yanıltıcı olabilir, en az 3’er gün olmadan sonuç gösterilmez. Bugün tamamlanmadığı için sayılmaz, uyku puanı hariç.</p>';
   }
 
   // ---------- CSV export ----------
   $('csvBtn').onclick = () => {
     const spread = new Map();
     const isSpread = (t) => { const d = startOfDay(t); if (!spread.has(d)) spread.set(d, isSpreadDay(d)); return spread.get(d); };
-    const items = [...state.entries.map((t) => ['smoke', t]), ...state.resisted.map((t) => ['resisted', t])].sort((a, b) => a[1] - b[1]);
-    const rows = [['tarih', 'saat', 'tur', 'tetikleyiciler', 'tahmini_saat', 'unix_ms']];
-    for (const [kind, t] of items) {
-      rows.push([toDateInput(t), fmtTime(t), kind === 'smoke' ? 'sigara' : 'direnildi',
-        tagsFor(kind, t).map((id) => triggerById(id).label).join('|'), kind === 'smoke' && isSpread(t) ? 'evet' : 'hayir', t]);
+    const items = [
+      ...state.entries.map((t) => ['smoke', t]),
+      ...state.resisted.map((t) => ['resisted', t]),
+      ...state.nrt.map((x) => ['nrt', x.t, x.type]),
+      ...state.drinks.map((x) => ['drink', x.t, x.type, x.units]),
+    ].sort((a, b) => a[1] - b[1]);
+    const cols = ['tarih', 'saat', 'tur', 'tetikleyiciler', 'tahmini_saat', 'unix_ms', 'detay', 'birim', 'ruh_hali', 'sinirlilik', 'uyku', 'enerji', 'oksuruk', 'not'];
+    const rows = [cols];
+    const add = (o) => rows.push(cols.map((c) => o[c] ?? ''));
+    for (const [kind, t, type, units] of items) {
+      const base = { tarih: toDateInput(t), saat: fmtTime(t), tahmini_saat: 'hayir', unix_ms: t };
+      if (kind === 'nrt') add({ ...base, tur: 'nrt_' + type });
+      else if (kind === 'drink') add({ ...base, tur: 'alkol', detay: DRINKS[type].csv, birim: units });
+      else {
+        add({ ...base, tur: kind === 'smoke' ? P().csv : 'direnildi', tetikleyiciler: tagsFor(kind, t).map((id) => triggerById(id).label).join('|'),
+          tahmini_saat: kind === 'smoke' && isSpread(t) ? 'evet' : 'hayir' });
+      }
+    }
+    // One row per check-in day, after the timed rows.
+    for (const [day, c] of Object.entries(state.checkins).sort()) {
+      add({ tarih: day, tur: 'checkin', unix_ms: parseDay(day), ruh_hali: c.mood, sinirlilik: c.irritability, uyku: c.sleep, enerji: c.energy, oksuruk: c.cough, not: c.note });
     }
     const esc = (v) => (/[",\n;]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
     const csv = '﻿' + rows.map((r) => r.map(esc).join(',')).join('\n');
@@ -1658,19 +2506,12 @@
     if (exp.length < 2 || base.length < 2) {
       return { cls: 'neutral', early: true, text: `Henüz erken: deneyde ${exp.length}, öncesinde ${base.length} tamamlanmış gün var. İki tarafta da en az 2 gün gerek.` };
     }
-    const a = exp.map((x) => x.v), b = base.map((x) => x.v);
-    const diff = mean(a) - mean(b);
+    const { diff, sig } = welch(exp.map((x) => x.v), base.map((x) => x.v));
     if (diff === 0) return { cls: 'neutral', text: 'Fark yok.' };
-    const va = stdev(a) ** 2 / a.length, vb = stdev(b) ** 2 / b.length, se = Math.sqrt(va + vb);
-    let sig;
-    if (se === 0) {
-      sig = true;
-    } else {
-      const den = va ** 2 / (a.length - 1) + vb ** 2 / (b.length - 1);
-      const df = den > 0 ? (va + vb) ** 2 / den : a.length + b.length - 2;
-      sig = Math.abs(diff) / se > tCrit(Math.floor(df));
-    }
     const good = isGood(e.metric, diff);
+    if (good == null) {
+      return sig ? { cls: 'neutral', text: 'Anlamlı fark (yaklaşık %95 güven).' } : { cls: 'neutral', text: 'Fark gürültü içinde. Daha fazla gün gerek ya da etki küçük.' };
+    }
     if (sig) return good ? { cls: 'good', text: 'Anlamlı iyileşme (yaklaşık %95 güven).' } : { cls: 'bad', text: 'Anlamlı kötüleşme (yaklaşık %95 güven).' };
     return { cls: 'neutral', text: `${good ? 'İyileşme' : 'Kötüleşme'} yönünde ama fark gürültü içinde. Daha fazla gün gerek ya da etki küçük.` };
   }
@@ -1699,7 +2540,7 @@
     const today0 = startOfDay(Date.now());
     const sel = $('expMetric');
     if (!sel.options.length) {
-      sel.innerHTML = Object.entries(METRICS).map(([k, m]) => `<option value="${k}">${m.label} (${m.better === 'down' ? 'azalsın' : 'artsın'})</option>`).join('');
+      sel.innerHTML = Object.entries(METRICS).map(([k, m]) => `<option value="${k}">${m.label}${m.better ? ` (${m.better === 'down' ? 'azalsın' : 'artsın'})` : ''}</option>`).join('');
     }
     if (!$('expStart').value) $('expStart').value = toDateInput(today0);
     const list = $('expList');
@@ -1715,7 +2556,7 @@
       const dayN = Math.round((today0 - e.start) / DAY) + 1;
       const stTxt = st === 'planned' ? 'başlamadı' : st === 'running' ? `gün ${dayN}/${e.days}, devam ediyor` : 'bitti';
       const diff = mb != null && me != null ? me - mb : null;
-      const digits = e.metric === 'count' || e.metric === 'first2h' || e.metric === 'late' ? 1 : 0;
+      const digits = e.metric === 'count' || e.metric === 'first2h' || e.metric === 'late' ? 1 : (M.digits ?? 0);
       const sdFmt = (list) => (list.length > 1 ? '±' + fmtN(stdev(list.map((x) => x.v)), digits) : '–');
       return `<section class="card" data-id="${e.id}">
         <h2>${escapeHtml(e.name)}</h2>
@@ -1725,7 +2566,7 @@
           <tr><th></th><th>Gün</th><th>Ortalama</th><th>Sapma</th></tr>
           <tr><td>Önce</td><td>${base.length}</td><td>${M.fmt(mb)}</td><td>${sdFmt(base)}</td></tr>
           <tr><td>Deney</td><td>${exp.length}</td><td>${M.fmt(me)}</td><td>${sdFmt(exp)}</td></tr>
-          <tr class="sum"><td>Fark</td><td></td><td class="${diff ? (isGood(e.metric, diff) ? 'good' : 'bad') : ''}">${diff == null ? '–' : fmtSigned(diff, digits) + M.unit}</td><td></td></tr>
+          <tr class="sum"><td>Fark</td><td></td><td class="${diff && isGood(e.metric, diff) != null ? (isGood(e.metric, diff) ? 'good' : 'bad') : ''}">${diff == null ? '–' : fmtSigned(diff, digits) + M.unit}</td><td></td></tr>
         </table></div>
         <p class="verdict ${v.cls}">${st === 'running' && !v.early ? 'Ara sonuç: ' : ''}${v.text}</p>
         <div class="row">
@@ -1753,7 +2594,7 @@
     save(); renderExperiments(); renderExpBanner();
   });
   $('expTemplate').onclick = () => {
-    $('expName').value = 'Carlos yürüyüşü sigarasız olursa sabah kümesi küçülür';
+    $('expName').value = `Carlos yürüyüşü ${P().without} olursa sabah kümesi küçülür`;
     $('expMetric').value = 'first2h';
     $('expStart').value = toDateInput(Date.now());
     $('expDays').value = 7;
@@ -1789,7 +2630,7 @@
   let lastDay = dayKey(Date.now());
   setInterval(() => {
     const k = dayKey(Date.now());
-    if (k !== lastDay) { lastDay = k; render(); } else renderSince();
+    if (k !== lastDay) { lastDay = k; render(); } else { renderSince(); renderNrt(); }
   }, 15000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { state = load(); render(); } });
 
