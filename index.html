@@ -328,7 +328,7 @@
     <div class="progress"><div id="gapGoalFill"></div></div>
   </div>
 
-  <button class="log-btn" id="logBtn">+ Sigara içtim</button>
+  <button class="log-btn" id="logBtn">+ IQOS içtim</button>
   <button class="craving-btn" id="cravingBtn">💪 Canım çekti, içmedim</button>
   <button class="link-btn" id="openBackfill">Kaydetmeyi unuttum, saat seç</button>
 
@@ -391,7 +391,7 @@
       <button data-days="30">30 gün</button>
     </div>
     <section class="card"><h2>Trend</h2><div id="anTrend"></div></section>
-    <section class="card"><h2>Sigaralar arası süre</h2><div id="anGaps"></div></section>
+    <section class="card"><h2 id="anGapsTitle">Çubuklar arası süre</h2><div id="anGaps"></div></section>
     <section class="card"><h2>Gün × saat</h2><div id="anHeat"></div></section>
     <section class="card"><h2>Tetikleyici profili</h2><div id="anTriggers"></div></section>
     <section class="card"><h2>Rutin metrikleri</h2><div id="anRoutine"></div></section>
@@ -436,7 +436,7 @@
     <input type="date" id="editDayDate">
   </div>
   <div class="field">
-    <label for="editDayCount">O gün içilen sigara</label>
+    <label for="editDayCount" id="editDayCountLabel">O gün içilen çubuk</label>
     <input type="number" id="editDayCount" min="0" max="200" inputmode="numeric" autofocus>
   </div>
   <p class="hint" id="editDayHint"></p>
@@ -475,7 +475,14 @@
 <dialog id="settingsDialog">
   <h2>Ayarlar</h2>
   <div class="field">
-    <label for="limitInput">Günlük hedef (en fazla kaç sigara)</label>
+    <label for="productInput">Ne kullanıyorsun?</label>
+    <select id="productInput">
+      <option value="iqos">IQOS (ısıtılmış tütün)</option>
+      <option value="cigarette">Sigara</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="limitInput" id="limitLabel">Günlük hedef (en fazla kaç çubuk)</label>
     <input type="number" id="limitInput" min="0" max="100" inputmode="numeric" placeholder="Örn. 10 — boş bırakırsan hedef yok">
   </div>
   <p class="hint">Hedefi her hafta 1 azaltmak, yavaş ama kalıcı bir bırakma yöntemidir.</p>
@@ -489,14 +496,14 @@
       <input type="time" id="sleepInput">
     </div>
   </div>
-  <p class="hint">Sigaralar arası ortalama süre, uyanık olduğun saatlere göre hesaplanır.</p>
+  <p class="hint" id="avgGapHint">Çubuklar arası ortalama süre, uyanık olduğun saatlere göre hesaplanır.</p>
   <div class="field">
-    <label for="minGapInput">Hedef ara (iki sigara arası en az kaç dakika)</label>
+    <label for="minGapInput" id="minGapLabel">Hedef ara (iki çubuk arası en az kaç dakika)</label>
     <input type="number" id="minGapInput" min="0" max="1440" step="5" inputmode="numeric" placeholder="Örn. 90 — boş bırakırsan geri sayım yok">
   </div>
   <p class="hint">Hedefi her hafta 15 dakika uzatmak sayıyı kendiliğinden düşürür.</p>
   <div class="field">
-    <label for="packSizeInput">Paketteki sigara sayısı</label>
+    <label for="packSizeInput" id="packSizeLabel">Paketteki çubuk sayısı</label>
     <input type="number" id="packSizeInput" min="1" max="100" inputmode="numeric" placeholder="20">
   </div>
   <div class="row">
@@ -547,6 +554,17 @@
     { id: 'alcohol', emoji: '🍺', label: 'Alkol' },
     { id: 'habit', emoji: '🔁', label: 'Alışkanlık' },
   ];
+  // Wording for the tracked product. The data is the same; only labels and Turkish suffixes change.
+  const PRODUCTS = {
+    iqos: {
+      name: 'IQOS', unit: 'çubuk', units: 'çubuklar', dat: 'çubuğa', abl: 'çubuktan', packAdj: 'çubukluk', toward: "IQOS'a",
+      log: '+ IQOS içtim', since: "Son IQOS'tan beri", next: 'Sonraki IQOS için en erken', without: "IQOS'suz", title: 'IQOS Sayacı', csv: 'iqos',
+    },
+    cigarette: {
+      name: 'Sigara', unit: 'sigara', units: 'sigaralar', dat: 'sigaraya', abl: 'sigaradan', packAdj: 'sigaralık', toward: 'sigaraya',
+      log: '+ Sigara içtim', since: 'Son sigaradan beri', next: 'Sonraki sigara için en erken', without: 'sigarasız', title: 'Sigara Sayacı', csv: 'sigara',
+    },
+  };
   const nums = (a) => (Array.isArray(a) ? a.filter(Number.isFinite).sort((x, y) => x - y) : []);
   // Tag maps are { "<timestamp>": ["triggerId", ...] }.
   function tagMap(m) {
@@ -570,6 +588,7 @@
   // Normalise any stored or imported object into the app's state shape.
   function sanitize(d) {
     return {
+      product: d.product === 'cigarette' ? 'cigarette' : 'iqos',
       entries: nums(d.entries),
       limit: Number.isFinite(d.limit) ? d.limit : null,
       wake: validTime(d.wake) ? d.wake : DEFAULT_WAKE,
@@ -686,6 +705,20 @@
 
   // ---------- render ----------
   const $ = (id) => document.getElementById(id);
+  const P = () => PRODUCTS[state.product];
+  const cap = (s) => s.charAt(0).toLocaleUpperCase('tr') + s.slice(1);
+  function applyWords() {
+    const p = P();
+    document.title = p.title;
+    $('logBtn').textContent = p.log;
+    $('anGapsTitle').textContent = `${cap(p.units)} arası süre`;
+    $('editDayCountLabel').textContent = `O gün içilen ${p.unit}`;
+    $('limitLabel').textContent = `Günlük hedef (en fazla kaç ${p.unit})`;
+    $('avgGapHint').textContent = `${cap(p.units)} arası ortalama süre, uyanık olduğun saatlere göre hesaplanır.`;
+    $('minGapLabel').textContent = `Hedef ara (iki ${p.unit} arası en az kaç dakika)`;
+    $('packSizeLabel').textContent = `Paketteki ${p.unit} sayısı`;
+    $('expName').placeholder = `Örn. Carlos yürüyüşü ${p.without} olursa sabah kümesi küçülür`;
+  }
 
   function render() {
     const now = Date.now();
@@ -696,6 +729,7 @@
     const yesterday = countFor(addDays(today0, -1));
     const limit = state.limit;
 
+    applyWords();
     $('dateLabel').textContent = new Date(now).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
 
     const countEl = $('todayCount');
@@ -838,10 +872,10 @@
       $('packSub').textContent = 'Hesap için en az 1 tam günlük kayıt gerekli.';
     } else if (avg === 0) {
       $('packDays').textContent = 'Son günlerde paket açmadın 🎉';
-      $('packSub').textContent = `${days} günde hiç sigara yok.`;
+      $('packSub').textContent = `${days} günde hiç ${P().unit} yok.`;
     } else {
       $('packDays').textContent = `1 paket ≈ ${fmt1(size / avg)} gün`;
-      $('packSub').textContent = `Günde ort. ${fmt1(avg)} sigara · ${size} sigaralık paket · ayda ~${fmt1((avg * 30) / size)} paket`
+      $('packSub').textContent = `Günde ort. ${fmt1(avg)} ${P().unit} · ${size} ${P().packAdj} paket · ayda ~${fmt1((avg * 30) / size)} paket`
         + (days < 7 ? ` · son ${days} güne göre` : ' · son 7 güne göre');
     }
   }
@@ -877,7 +911,7 @@
     const ids = state.triggers.map((x) => x.id).filter((id) => smoked.has(id) || resisted.has(id));
     const box = $('triggerStats');
     if (!ids.length) {
-      box.innerHTML = '<p class="hint" style="margin:0">Kayıt eklerken tetikleyici seçtikçe hangi durumların seni sigaraya ittiği burada görünecek.</p>';
+      box.innerHTML = `<p class="hint" style="margin:0">Kayıt eklerken tetikleyici seçtikçe hangi durumların seni ${P().toward} ittiği burada görünecek.</p>`;
       return;
     }
     ids.sort((a, b) => (smoked.get(b) || 0) - (smoked.get(a) || 0) || (resisted.get(b) || 0) - (resisted.get(a) || 0));
@@ -888,11 +922,11 @@
       const pct = tagged ? Math.round((s / tagged) * 100) : 0;
       return `<div class="trow">
         <span>${tr.emoji} ${escapeHtml(tr.label)}</span>
-        <span class="tcount">${s ? `${s} sigara · %${pct}` : ''}${r ? `<span class="r">💪 ${r} direnildi</span>` : ''}</span>
+        <span class="tcount">${s ? `${s} ${P().unit} · %${pct}` : ''}${r ? `<span class="r">💪 ${r} direnildi</span>` : ''}</span>
         <div class="tbar"><div style="width:${(s / max) * 100}%"></div></div>
       </div>`;
     }).join('') + '</div>'
-      + `<p class="hsummary">Yüzdeler etiketli sigaralara göre. 💪 direndiğin istekler.${untagged ? ` Etiketsiz: ${untagged}.` : ''}</p>`;
+      + `<p class="hsummary">Yüzdeler etiketli ${P().units}a göre. 💪 direndiğin istekler.${untagged ? ` Etiketsiz: ${untagged}.` : ''}</p>`;
   }
   const escapeHtml = (str) => str.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -988,7 +1022,7 @@
       const awake = awakeBetween(last, now);
       const note = !isAwakeAt(now) ? ' <span class="note">· uyku saati, sayaç duruyor</span>'
         : (now - last - awake >= 60000 ? ' <span class="note">· uyku hariç</span>' : '');
-      $('since').innerHTML = `Son sigaradan beri <b>${awake < 60000 && now - last >= 60000 ? '<1dk' : fmtDuration(awake)}</b>${note}`;
+      $('since').innerHTML = `${P().since} <b>${awake < 60000 && now - last >= 60000 ? '<1dk' : fmtDuration(awake)}</b>${note}`;
     }
 
     // Average gap = time awake so far today / cigarettes today.
@@ -998,7 +1032,7 @@
     if (today && awakeMs > 0) {
       el.innerHTML = `Ortalama ara <b>${fmtGap(awakeMs / today)}</b> <span class="note">· uyanık süreye göre</span>`;
     } else if (!today && awakeMs > 0) {
-      el.innerHTML = `Uyanalı <b>${fmtDuration(awakeMs)}</b>, bugün henüz sigara yok`;
+      el.innerHTML = `Uyanalı <b>${fmtDuration(awakeMs)}</b>, bugün henüz ${P().unit} yok`;
     } else {
       el.textContent = '';
     }
@@ -1015,7 +1049,7 @@
       if (now < target) {
         box.classList.remove('done');
         const day = startOfDay(target) > startOfDay(now) ? 'yarın ' : '';
-        $('gapGoalText').innerHTML = `Sonraki sigara için en erken <b>${day}${fmtTime(target)}</b> · ${fmtDuration(awakeBetween(now, target) + 59999)} kaldı`;
+        $('gapGoalText').innerHTML = `${P().next} <b>${day}${fmtTime(target)}</b> · ${fmtDuration(awakeBetween(now, target) + 59999)} kaldı`;
         $('gapGoalFill').style.width = Math.min(100, (awakeBetween(last, now) / goalMs) * 100) + '%';
       } else {
         box.classList.add('done');
@@ -1074,7 +1108,7 @@
     } else if (!total) {
       parts.push(`${title}: kayıt yok.`);
     } else {
-      parts.push(`${title}: <b>${total}</b> sigara` + (days > 1 ? ` · günde ort. <b>${(Math.round((total / days) * 10) / 10).toLocaleString('tr-TR')}</b>` : ''));
+      parts.push(`${title}: <b>${total}</b> ${P().unit}` + (days > 1 ? ` · günde ort. <b>${(Math.round((total / days) * 10) / 10).toLocaleString('tr-TR')}</b>` : ''));
       if (awakeMin > 0) parts.push(`Ortalama ara <b>${fmtGap((awakeMin * 60000) / total)}</b> (uyanık ${state.wake}–${state.sleep})`);
       const peak = hours.indexOf(Math.max(...hours));
       if (hours[peak] >= 2) parts.push(`En yoğun saat <b>${pad2(peak)}:00–${pad2((peak + 1) % 24)}:00</b>`);
@@ -1116,11 +1150,11 @@
   $('logBtn').onclick = () => {
     const t = Date.now();
     const lastT = state.entries[state.entries.length - 1];
-    if (lastT != null && t - lastT < 60000 && !confirm('Son kayıttan bu yana 1 dakika geçmedi. Yeni bir sigara olarak eklensin mi?')) return;
+    if (lastT != null && t - lastT < 60000 && !confirm(`Son kayıttan bu yana 1 dakika geçmedi. Yeni bir ${P().unit} olarak eklensin mi?`)) return;
     const early = earlyBy(t);
     addEntry(t);
     const c = countsByDay().get(dayKey(t));
-    afterAdd('smoke', t, `Bugün ${c}. sigara` + (early >= 60000 ? ` · hedef aradan ${fmtDuration(early)} erken` : ''));
+    afterAdd('smoke', t, `Bugün ${c}. ${P().unit}` + (early >= 60000 ? ` · hedef aradan ${fmtDuration(early)} erken` : ''));
   };
   $('cravingBtn').onclick = () => {
     const t = Date.now();
@@ -1176,7 +1210,7 @@
     const items = dayItems(day0);
     const tagged = items.filter((t) => tagsFor('smoke', t).length).length;
     const { start, end } = awakeWindow(day0);
-    $('editDayHint').textContent = `Şu an ${items.length} kayıt var. Kaydedince sigaralar ${fmtTime(start)}–${fmtTime(end)} arasına eşit dağıtılır.`
+    $('editDayHint').textContent = `Şu an ${items.length} kayıt var. Kaydedince ${P().units} ${fmtTime(start)}–${fmtTime(end)} arasına eşit dağıtılır.`
       + (tagged ? ` O günün ${tagged} kaydındaki tetikleyiciler silinir.` : '');
   }
   function openEditDay(day0) {
@@ -1211,7 +1245,7 @@
     save(); render();
     $('editDayDialog').close();
     const label = new Date(day0).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
-    showToast(`${label}: ${n} sigara, gün içine dağıtıldı`, false);
+    showToast(`${label}: ${n} ${P().unit}, gün içine dağıtıldı`, false);
   };
 
   $('openBackfill').onclick = () => {
@@ -1229,6 +1263,7 @@
   };
 
   function openSettings(focusTriggers = false) {
+    $('productInput').value = state.product;
     $('limitInput').value = state.limit ?? '';
     $('wakeInput').value = state.wake;
     $('sleepInput').value = state.sleep;
@@ -1253,6 +1288,7 @@
     state.minGap = Number.isFinite(gn) && gn > 0 ? gn : null;
     const ps = Math.floor(Number($('packSizeInput').value));
     state.packSize = Number.isFinite(ps) && ps > 0 ? ps : 20;
+    state.product = $('productInput').value === 'cigarette' ? 'cigarette' : 'iqos';
     save(); render();
     $('settingsDialog').close();
     showToast(state.limit != null ? `Günlük hedef: ${state.limit}` : 'Hedef kaldırıldı', false);
@@ -1357,12 +1393,12 @@
 
   // Metrics that can be tracked per day and used in experiments.
   const METRICS = {
-    count: { label: 'Günlük sigara', better: 'down', fmt: (v) => fmtN(v), unit: '' },
-    first2h: { label: 'İlk 2 saatteki sigara', better: 'down', fmt: (v) => fmtN(v), unit: '' },
-    late: { label: '21:00 sonrası sigara', better: 'down', fmt: (v) => fmtN(v), unit: '' },
-    auto: { label: 'Otomatik sigara payı', better: 'down', fmt: (v) => (v == null ? '–' : '%' + fmtN(v, 0)), unit: ' puan' },
+    count: { get label() { return 'Günlük ' + P().unit; }, better: 'down', fmt: (v) => fmtN(v), unit: '' },
+    first2h: { get label() { return 'İlk 2 saatteki ' + P().unit; }, better: 'down', fmt: (v) => fmtN(v), unit: '' },
+    late: { get label() { return '21:00 sonrası ' + P().unit; }, better: 'down', fmt: (v) => fmtN(v), unit: '' },
+    auto: { get label() { return 'Otomatik ' + P().unit + ' payı'; }, better: 'down', fmt: (v) => (v == null ? '–' : '%' + fmtN(v, 0)), unit: ' puan' },
     p50: { label: 'Medyan ara', better: 'up', fmt: (v) => (v == null ? '–' : fmtN(v, 0) + ' dk'), unit: ' dk' },
-    first: { label: 'İlk sigara saati', better: 'up', fmt: fmtClock, unit: ' dk' },
+    first: { get label() { return 'İlk ' + P().unit + ' saati'; }, better: 'up', fmt: fmtClock, unit: ' dk' },
   };
   const isGood = (key, diff) => (METRICS[key].better === 'down' ? diff < 0 : diff > 0);
 
@@ -1414,7 +1450,7 @@
     renderRoutine(days, prevDays, today0);
     const spreadN = days.filter((d) => d.spread).length;
     const span = Math.round((today0 - trackedStart()) / DAY) + 1;
-    $('anDataNote').innerHTML = `Toplam ${state.entries.length} sigara ve ${state.resisted.length} direnilen istek, ${span} gün.`
+    $('anDataNote').innerHTML = `Toplam ${state.entries.length} ${P().unit} ve ${state.resisted.length} direnilen istek, ${span} gün.`
       + (spreadN ? ` Bu dönemde ${spreadN} günün saatleri tahmini (~), saat bazlı metriklere katılmadı.` : '')
       + ' CSV her kaydı tarih, saat, tür ve tetikleyicilerle verir. Sheets veya Grafana\'ya doğrudan yüklenebilir.';
   }
@@ -1459,13 +1495,13 @@
       const sse = ys.reduce((s, v, i) => s + (v - (a + b * xs[i])) ** 2, 0);
       const se = Math.sqrt(sse / (comp.length - 2) / sxx);
       const tc = tCrit(comp.length - 2), lo = b - tc * se, hi = b + tc * se;
-      text = `Eğim: günde <b>${fmtSigned(b)}</b> sigara <span class="note">· %95 aralık ${fmtSigned(lo)} … ${fmtSigned(hi)} · ${comp.length} güne göre</span>`;
+      text = `Eğim: günde <b>${fmtSigned(b)}</b> ${P().unit} <span class="note">· %95 aralık ${fmtSigned(lo)} … ${fmtSigned(hi)} · ${comp.length} güne göre</span>`;
       const yLast = a + b * (comp.length - 1);
       if (hi < 0 && yLast > 2) {
         const target = Math.max(1, Math.floor(yLast / 2));
         const when = new Date(addDays(comp[comp.length - 1].day0, Math.ceil((target - yLast) / b)))
           .toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
-        text += `<br>Bu eğim sürerse günde ${target} sigaraya yaklaşık <b>${when}</b> civarı inersin. <span class="note">Doğrusal tahmin.</span>`;
+        text += `<br>Bu eğim sürerse günde ${target} ${P().dat} yaklaşık <b>${when}</b> civarı inersin. <span class="note">Doğrusal tahmin.</span>`;
       } else if (lo > 0) {
         text += '<br>Sayı istatistiksel olarak artıyor.';
       } else {
@@ -1485,7 +1521,7 @@
   function renderGapCard(days, prevDays, today0) {
     const gaps = days.flatMap((d) => d.gaps), prevGaps = prevDays.flatMap((d) => d.gaps);
     if (!gaps.length) {
-      $('anGaps').innerHTML = '<p class="hint" style="margin:0">Bu dönemde aynı gün içinde en az iki sigara yok.</p>';
+      $('anGaps').innerHTML = `<p class="hint" style="margin:0">Bu dönemde aynı gün içinde en az iki ${P().unit} yok.</p>`;
       return;
     }
     const goal = state.minGap;
@@ -1543,7 +1579,7 @@
     const comp = days.filter((d) => d.day0 < today0);
     const wk = comp.filter((d) => { const w = new Date(d.day0).getDay(); return w >= 1 && w <= 5; }).map((d) => d.count);
     const we = comp.filter((d) => { const w = new Date(d.day0).getDay(); return w === 0 || w === 6; }).map((d) => d.count);
-    const lines = ['Koyu hücre: o gün ve saatte gün başına daha çok sigara.'];
+    const lines = [`Koyu hücre: o gün ve saatte gün başına daha çok ${P().unit}.`];
     if (best) lines.push(`En yoğun: <b>${DAY_NAMES[WEEK_ORDER[best.r]]} ${pad2(best.h)}:00–${pad2((best.h + 1) % 24)}:00</b> <span class="note">(gün başına ${fmtN(best.v)})</span>`);
     if (wk.length && we.length) lines.push(`Hafta içi ort. <b>${fmtN(mean(wk))}</b> · hafta sonu ort. <b>${fmtN(mean(we))}</b>`);
     $('anHeat').innerHTML = svg(W, H, g) + `<p class="an-text">${lines.join('<br>')}</p>`;
@@ -1581,13 +1617,13 @@
     }).join('');
     const strongest = list.filter(([, r]) => r.gaps.length >= 2).sort((a, b) => median(a[1].gaps) - median(b[1].gaps))[0];
     const weakest = list.filter(([, r]) => r.gaps.length >= 2).sort((a, b) => median(b[1].gaps) - median(a[1].gaps))[0];
-    const notes = [`Etiketli: ${tagged}/${total} sigara.`];
+    const notes = [`Etiketli: ${tagged}/${total} ${P().unit}.`];
     if (strongest && weakest && strongest[0] !== weakest[0]) {
       notes.push(`En güçlü istek <b>${escapeHtml(triggerById(strongest[0]).label)}</b> (önceki ara ${fmtN(median(strongest[1].gaps), 0)} dk), en zayıf <b>${escapeHtml(triggerById(weakest[0]).label)}</b> (${fmtN(median(weakest[1].gaps), 0)} dk).`);
     }
     $('anTriggers').innerHTML = `<div class="tbl-wrap"><table class="tbl"><tr><th>Tetikleyici</th><th>n</th><th>Pay</th><th>Önceki ara</th><th>Saat</th><th>💪</th></tr>${body}</table></div>`
       + `<p class="an-text">${notes.join('<br>')}</p>`
-      + '<p class="an-foot">Önceki ara: o sigaradan önce geçen uyanık süre, medyan. Kısa ara güçlü istek demek. Saat: en sık görüldüğü saat. 💪 direnilen istek.</p>';
+      + `<p class="an-foot">Önceki ara: o ${P().abl} önce geçen uyanık süre, medyan. Kısa ara güçlü istek demek. Saat: en sık görüldüğü saat. 💪 direnilen istek.</p>`;
   }
 
   function renderRoutine(days, prevDays, today0) {
@@ -1612,7 +1648,7 @@
       }).join('')}</tr>`;
     }
     $('anRoutine').innerHTML = `<div class="tbl-wrap"><table class="tbl"><tr><th>Gün</th><th>Sayı</th><th>İlk</th><th>İlk 2s</th><th>21+</th><th>Oto</th><th>p50</th></tr>${body}</table></div>`
-      + '<p class="an-foot">İlk 2s: ilk sigaradan sonraki 2 saatte içilen, ilki dahil. 21+: 21:00 sonrası. Oto: Alışkanlık ve Sıkılma etiketli sigaraların etiketlilere oranı. p50: gün içi medyan ara, dk. * Bugün devam ediyor, ortalamalara katılmaz. ~ saatleri tahmini gün. Fark: yeşil iyi yönde.</p>';
+      + `<p class="an-foot">İlk 2s: ilk ${P().abl} sonraki 2 saatte içilen, ilki dahil. 21+: 21:00 sonrası. Oto: Alışkanlık ve Sıkılma etiketli ${P().units}ın etiketlilere oranı. p50: gün içi medyan ara, dk. * Bugün devam ediyor, ortalamalara katılmaz. ~ saatleri tahmini gün. Fark: yeşil iyi yönde.</p>`;
   }
 
   // ---------- CSV export ----------
@@ -1622,7 +1658,7 @@
     const items = [...state.entries.map((t) => ['smoke', t]), ...state.resisted.map((t) => ['resisted', t])].sort((a, b) => a[1] - b[1]);
     const rows = [['tarih', 'saat', 'tur', 'tetikleyiciler', 'tahmini_saat', 'unix_ms']];
     for (const [kind, t] of items) {
-      rows.push([toDateInput(t), fmtTime(t), kind === 'smoke' ? 'sigara' : 'direnildi',
+      rows.push([toDateInput(t), fmtTime(t), kind === 'smoke' ? P().csv : 'direnildi',
         tagsFor(kind, t).map((id) => triggerById(id).label).join('|'), kind === 'smoke' && isSpread(t) ? 'evet' : 'hayir', t]);
     }
     const esc = (v) => (/[",\n;]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
@@ -1753,7 +1789,7 @@
     save(); renderExperiments(); renderExpBanner();
   });
   $('expTemplate').onclick = () => {
-    $('expName').value = 'Carlos yürüyüşü sigarasız olursa sabah kümesi küçülür';
+    $('expName').value = `Carlos yürüyüşü ${P().without} olursa sabah kümesi küçülür`;
     $('expMetric').value = 'first2h';
     $('expStart').value = toDateInput(Date.now());
     $('expDays').value = 7;
