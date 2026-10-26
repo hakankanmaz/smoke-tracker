@@ -382,6 +382,7 @@
     <div class="since" id="since"></div>
     <div class="since" id="avgGap"></div>
     <div class="since resisted-line" id="resistedLine"></div>
+    <div class="since" id="planLine"></div>
   </div>
 
   <div class="progress" id="progress" hidden><div id="progressFill"></div></div>
@@ -597,7 +598,7 @@
     <label for="limitInput" id="limitLabel">Günlük hedef (en fazla kaç çubuk)</label>
     <input type="number" id="limitInput" min="0" max="100" inputmode="numeric" placeholder="Örn. 10 — boş bırakırsan hedef yok">
   </div>
-  <p class="hint">Hedefi her hafta 1 azaltmak, yavaş ama kalıcı bir bırakma yöntemidir.</p>
+  <p class="hint" id="limitHint">Hedefi her hafta 1 azaltmak, yavaş ama kalıcı bir bırakma yöntemidir.</p>
   <div class="field-pair">
     <div class="field">
       <label for="wakeInput">Kalkış saati</label>
@@ -620,6 +621,22 @@
   </div>
   <div class="row">
     <button class="btn primary" id="saveSettings">Kaydet</button>
+  </div>
+  <hr>
+  <h3 class="section">Azaltma planı</h3>
+  <label class="check"><input type="checkbox" id="taperEnabled"> Günlük hedefi plana göre otomatik ayarla</label>
+  <div class="field-pair">
+    <div class="field"><label for="taperStart">Başlangıç günü</label><input type="date" id="taperStart"></div>
+    <div class="field"><label for="taperStartValue">Başlangıç hedefi</label><input type="number" id="taperStartValue" min="0" max="100" inputmode="numeric"></div>
+  </div>
+  <div class="field-trio">
+    <div class="field"><label for="taperStep">Adım</label><input type="number" id="taperStep" min="1" max="20" inputmode="numeric"></div>
+    <div class="field"><label for="taperInterval">Kaç günde</label><input type="number" id="taperInterval" min="1" max="60" inputmode="numeric"></div>
+    <div class="field"><label for="taperFloor">Taban</label><input type="number" id="taperFloor" min="0" max="100" inputmode="numeric"></div>
+  </div>
+  <p class="hint" id="taperPreview"></p>
+  <div class="row">
+    <button class="btn primary" id="saveTaper">Planı kaydet</button>
   </div>
   <hr>
   <h3 class="section">Bırakılanlar</h3>
@@ -761,6 +778,17 @@
     }
     return out;
   }
+  // Step-down plan: from startValue, lower the daily limit by `step` every `interval` days, never below `floor`.
+  const intIn = (v, lo, hi, def) => (Number.isInteger(v) && v >= lo && v <= hi ? v : def);
+  function taperOf(t) {
+    const o = t && typeof t === 'object' ? t : {};
+    return {
+      enabled: o.enabled === true, start: validDate(o.start) ? o.start : null,
+      startValue: intIn(o.startValue, 0, 100, 10), step: intIn(o.step, 1, 20, 1), interval: intIn(o.interval, 1, 60, 7), floor: intIn(o.floor, 0, 100, 0),
+    };
+  }
+  // A manual change of today's limit while a plan is on: { day: YYYY-MM-DD, value }.
+  const overrideOf = (o) => (o && validDate(o.day) && (o.value === null || intIn(o.value, 0, 100, -1) >= 0) ? { day: o.day, value: o.value } : null);
   const nums = (a) => (Array.isArray(a) ? a.filter(Number.isFinite).sort((x, y) => x - y) : []);
   // Tag maps are { "<timestamp>": ["triggerId", ...] }.
   function tagMap(m) {
@@ -797,6 +825,8 @@
       drinks: drinkList(d.drinks, drinkUnits),
       drinkUnits,
       quits: quitList(d.quits),
+      taper: taperOf(d.taper),
+      limitOverride: overrideOf(d.limitOverride),
       checkins: checkinMap(d.checkins),
       alcFreeGoal: Number.isInteger(d.alcFreeGoal) && d.alcFreeGoal >= 0 && d.alcFreeGoal <= 7 ? d.alcFreeGoal : 3,
       tags: tagMap(d.tags),
@@ -906,6 +936,40 @@
     return map;
   }
 
+  // ---------- daily limit ----------
+  function planFor(day0) {
+    const tp = state.taper;
+    if (!tp.enabled || !tp.start) return null;
+    const d = Math.round((day0 - parseDay(tp.start)) / 86400000);
+    if (d < 0) return null;
+    return Math.max(tp.floor, tp.startValue - Math.floor(d / tp.interval) * tp.step);
+  }
+  // Today's manual override wins, then the plan, then the fixed limit from settings.
+  function limitFor(day0) {
+    const o = state.limitOverride;
+    if (o && o.day === toDateInput(day0)) return o.value;
+    const p = planFor(day0);
+    return p != null ? p : state.limit;
+  }
+  // Next day the plan steps down from today's value, or null at the floor.
+  function nextStep(day0) {
+    const tp = state.taper, cur = planFor(day0);
+    if (cur == null || cur <= tp.floor) return null;
+    const d = Math.round((day0 - parseDay(tp.start)) / 86400000);
+    const at = addDays(parseDay(tp.start), (Math.floor(d / tp.interval) + 1) * tp.interval);
+    return { at, value: Math.max(tp.floor, cur - tp.step), days: Math.round((at - day0) / 86400000) };
+  }
+  function renderPlanLine(today0) {
+    const tp = state.taper, el = $('planLine');
+    if (!tp.enabled || !tp.start) { el.textContent = ''; return; }
+    const cur = planFor(today0);
+    if (cur == null) { el.innerHTML = `Plan <b>${fmtShort(parseDay(tp.start))}</b> günü ${tp.startValue} ile başlıyor`; return; }
+    const o = state.limitOverride && state.limitOverride.day === toDateInput(today0) ? state.limitOverride : null;
+    const nx = nextStep(today0);
+    el.innerHTML = `Plan: bugün <b>${cur}</b>${o ? ` <span class="note">(elle ${o.value ?? 'hedefsiz'})</span>` : ''}`
+      + (nx ? `, ${nx.days} gün sonra <b>${nx.value}</b>` : ' <span class="note">· taban</span>');
+  }
+
   // ---------- render ----------
   const $ = (id) => document.getElementById(id);
   const P = () => PRODUCTS[state.product];
@@ -930,9 +994,10 @@
     const countFor = (t) => counts.get(dayKey(t)) || 0;
     const today = countFor(now);
     const yesterday = countFor(addDays(today0, -1));
-    const limit = state.limit;
+    const limit = limitFor(today0);
 
     applyWords();
+    renderPlanLine(today0);
     $('dateLabel').textContent = new Date(now).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
 
     const countEl = $('todayCount');
@@ -993,9 +1058,10 @@
       num.className = 'num';
       num.textContent = d.tracked ? d.c : '';
       const bar = document.createElement('div');
+      const dl = limitFor(d.t);
       bar.className = 'bar' + (d.t === today0 ? ' today' : '')
-        + (limit != null && d.c > limit ? ' over' : '')
-        + (limit != null && d.c <= limit && d.c > 0 && d.t !== today0 ? ' under' : '');
+        + (dl != null && d.c > dl ? ' over' : '')
+        + (dl != null && d.c <= dl && d.c > 0 && d.t !== today0 ? ' under' : '');
       bar.style.height = Math.max(2, (d.c / max) * BAR_AREA) + 'px';
       wrap.append(num, bar);
       chart.append(wrap);
@@ -1699,7 +1765,16 @@
 
   function openSettings(focusTriggers = false) {
     $('productInput').value = state.product;
-    $('limitInput').value = state.limit ?? '';
+    const t0 = startOfDay(Date.now());
+    syncLimitField();
+    const tp = state.taper;
+    $('taperEnabled').checked = tp.enabled;
+    $('taperStart').value = tp.start || toDateInput(t0);
+    $('taperStartValue').value = tp.startValue;
+    $('taperStep').value = tp.step;
+    $('taperInterval').value = tp.interval;
+    $('taperFloor').value = tp.floor;
+    updateTaperPreview();
     $('wakeInput').value = state.wake;
     $('sleepInput').value = state.sleep;
     $('minGapInput').value = state.minGap ?? '';
@@ -1721,7 +1796,15 @@
   $('saveSettings').onclick = () => {
     const v = $('limitInput').value.trim();
     const n = v === '' ? null : Math.max(0, Math.floor(Number(v)));
-    state.limit = Number.isFinite(n) ? n : null;
+    const value = Number.isFinite(n) ? n : null;
+    const t0 = startOfDay(Date.now()), plan = planFor(t0);
+    if (plan != null) {
+      // With a plan on, a different value is a one-day override; the plan's own value clears it.
+      state.limitOverride = value === plan ? null : { day: toDateInput(t0), value };
+    } else {
+      state.limit = value;
+      state.limitOverride = null;
+    }
     const wake = $('wakeInput').value, sleep = $('sleepInput').value;
     if (validTime(wake)) state.wake = wake;
     if (validTime(sleep)) state.sleep = sleep;
@@ -1733,7 +1816,49 @@
     state.product = $('productInput').value === 'cigarette' ? 'cigarette' : 'iqos';
     save(); render();
     $('settingsDialog').close();
-    showToast(state.limit != null ? `Günlük hedef: ${state.limit}` : 'Hedef kaldırıldı', false);
+    const lim = limitFor(startOfDay(Date.now()));
+    showToast(lim != null ? `Günlük hedef: ${lim}` : 'Hedef kaldırıldı', false);
+  };
+  // The daily-limit field shows today's effective limit and explains when a plan is in charge.
+  function syncLimitField() {
+    const t0 = startOfDay(Date.now()), plan = planFor(t0);
+    $('limitInput').value = limitFor(t0) ?? '';
+    $('limitHint').textContent = plan != null
+      ? `Plan açık, bugünkü plan değeri ${plan}. Buraya farklı bir değer yazarsan sadece bugün için geçerli olur.`
+      : 'Hedefi her hafta 1 azaltmak, yavaş ama kalıcı bir bırakma yöntemidir.';
+  }
+  function readTaperForm() {
+    const num = (id) => Math.floor(Number($(id).value));
+    return taperOf({
+      enabled: $('taperEnabled').checked, start: $('taperStart').value, startValue: num('taperStartValue'),
+      step: num('taperStep'), interval: num('taperInterval'), floor: num('taperFloor'),
+    });
+  }
+  // Shows the next few steps of the plan as it is in the form.
+  function updateTaperPreview() {
+    const tp = readTaperForm();
+    if (!tp.start) { $('taperPreview').textContent = ''; return; }
+    const s0 = parseDay(tp.start), steps = [`${fmtShort(s0)}: ${tp.startValue}`];
+    let v = tp.startValue, k = 0;
+    while (v > tp.floor && steps.length < 5) { k++; v = Math.max(tp.floor, v - tp.step); steps.push(`${fmtShort(addDays(s0, k * tp.interval))}: ${v}`); }
+    let end = '';
+    if (tp.startValue > tp.floor) {
+      const n = Math.ceil((tp.startValue - tp.floor) / tp.step);
+      end = ` · ${tp.floor} tabanına ${fmtShort(addDays(s0, n * tp.interval))} günü ulaşılır`;
+    }
+    $('taperPreview').textContent = steps.join(' → ') + (v > tp.floor ? ' …' : '') + end;
+  }
+  ['taperEnabled', 'taperStart', 'taperStartValue', 'taperStep', 'taperInterval', 'taperFloor'].forEach((id) => { $(id).oninput = updateTaperPreview; });
+  $('saveTaper').onclick = () => {
+    const tp = readTaperForm();
+    if (tp.enabled && !tp.start) { alert('Başlangıç günü seç.'); return; }
+    if (tp.floor > tp.startValue) { alert('Taban, başlangıç hedefinden büyük olamaz.'); return; }
+    state.taper = tp;
+    state.limitOverride = null;
+    save(); render();
+    const t0 = startOfDay(Date.now());
+    syncLimitField();
+    showToast(tp.enabled ? `Plan kaydedildi. Bugünkü hedef: ${limitFor(t0) ?? '–'}` : 'Plan kapatıldı', false);
   };
   $('addQuit').onclick = () => {
     const label = $('newQuitLabel').value.trim(), since = $('newQuitDate').value;
@@ -1959,7 +2084,8 @@
       return mean(w);
     });
     const n = days.length, W = 340, H = 150, top = 16, bottom = 18, ch = H - top - bottom, bw = W / n;
-    const max = Math.max(1, state.limit || 0, ...days.map((d) => d.count), ...ma.filter((v) => v != null));
+    const lim = limitFor(today0);
+    const max = Math.max(1, lim || 0, ...days.map((d) => d.count), ...ma.filter((v) => v != null));
     const y = (v) => top + ch * (1 - v / max);
     const every = n <= 7 ? 1 : n <= 14 ? 2 : 5;
     let g = '';
@@ -1971,7 +2097,7 @@
     });
     const pts = ma.map((v, i) => (v == null ? null : `${i * bw + bw / 2},${y(v)}`)).filter(Boolean);
     if (pts.length > 1) g += `<polyline class="c-line" points="${pts.join(' ')}"/>`;
-    if (state.limit) g += `<line class="c-limit" x1="0" x2="${W}" y1="${y(state.limit)}" y2="${y(state.limit)}"/>`;
+    if (lim) g += `<line class="c-limit" x1="0" x2="${W}" y1="${y(lim)}" y2="${y(lim)}"/>`;
 
     // Linear trend over complete days only, with a 95% interval for the slope.
     const comp = days.filter((d) => d.day0 < today0);
@@ -2005,7 +2131,7 @@
       text += `<br>Günlük ortalama <b>${fmtN(cur)}</b> · önceki ${prevDays.length} gün ${fmtN(prev)} <span class="note">(${fmtSigned(cur - prev)})</span>`;
     }
     $('anTrend').innerHTML = svg(W, H, g)
-      + `<div class="legend-row"><span><i class="lg-bar"></i>günlük</span><span><i class="lg-line"></i>7 gün ort.</span>${state.limit ? '<span><i class="lg-limit"></i>hedef</span>' : ''}</div>`
+      + `<div class="legend-row"><span><i class="lg-bar"></i>günlük</span><span><i class="lg-line"></i>7 gün ort.</span>${lim ? '<span><i class="lg-limit"></i>hedef</span>' : ''}</div>`
       + `<p class="an-text">${text}</p>`;
   }
 
