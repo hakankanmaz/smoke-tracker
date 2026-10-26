@@ -309,6 +309,14 @@
   .aux-status b { color: var(--text); font-weight: 600; }
   ul.entries li.aux .what { color: var(--muted); margin-left: 8px; font-size: 14px; }
   ul.entries li.aux .main { cursor: default; }
+  .aux-row.three { grid-template-columns: repeat(3, 1fr); }
+  .wk { display: flex; gap: 6px; margin-top: 12px; }
+  .wk span { flex: 1; text-align: center; font-size: 11px; padding: 6px 0; border-radius: 8px; background: var(--bg); color: var(--muted); }
+  .wk .free { background: rgba(76,195,138,.18); color: var(--accent); }
+  .wk .drank { background: rgba(242,184,75,.18); color: var(--warn); }
+  .wk .now { outline: 1px solid var(--muted); }
+  .field-trio { display: flex; gap: 10px; }
+  .field-trio .field { flex: 1; min-width: 0; }
 </style>
 </head>
 <body>
@@ -355,6 +363,17 @@
       <button class="aux-btn" data-nrt="spray"><span class="e">💨</span>Sprey</button>
     </div>
     <p class="aux-status" id="patchStatus"></p>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Alkol</h2><span class="sub" id="drinkToday"></span></div>
+    <div class="aux-row three">
+      <button class="aux-btn" data-drink="beer"><span class="e">🍺</span>Bira</button>
+      <button class="aux-btn" data-drink="wine"><span class="e">🍷</span>Şarap</button>
+      <button class="aux-btn" data-drink="other"><span class="e">🥃</span>Diğer</button>
+    </div>
+    <div class="wk" id="drinkWeekDays"></div>
+    <p class="aux-status" id="drinkWeek"></p>
   </section>
 
   <div class="stats">
@@ -536,6 +555,21 @@
     <button class="btn primary" id="saveSettings">Kaydet</button>
   </div>
   <hr>
+  <h3 class="section">Alkol</h3>
+  <p class="hint">Birim = standart içki (10 g alkol). 330 ml %5 bira ≈ 1,3 · 150 ml %12 şarap ≈ 1,4.</p>
+  <div class="field-trio">
+    <div class="field"><label for="unitBeer">🍺 Bira</label><input type="number" id="unitBeer" min="0.1" max="10" step="0.1" inputmode="decimal"></div>
+    <div class="field"><label for="unitWine">🍷 Şarap</label><input type="number" id="unitWine" min="0.1" max="10" step="0.1" inputmode="decimal"></div>
+    <div class="field"><label for="unitOther">🥃 Diğer</label><input type="number" id="unitOther" min="0.1" max="10" step="0.1" inputmode="decimal"></div>
+  </div>
+  <div class="field">
+    <label for="alcFreeGoalInput">Haftalık alkolsüz akşam hedefi</label>
+    <input type="number" id="alcFreeGoalInput" min="0" max="7" inputmode="numeric">
+  </div>
+  <div class="row">
+    <button class="btn primary" id="saveDrinkSettings">Kaydet</button>
+  </div>
+  <hr>
   <h3 class="section">Tetikleyiciler</h3>
   <label class="check"><input type="checkbox" id="askTriggerInput"> Her kayıttan sonra tetikleyici sor</label>
   <p class="hint">Listede olmayan bir durum varsa ekle. Silmek geçmiş kayıtlardaki etiketi de gizler.</p>
@@ -602,6 +636,24 @@
   const nrtList = (a) => (Array.isArray(a)
     ? a.filter((x) => x && Number.isFinite(x.t) && NRT[x.type]).map((x) => ({ t: x.t, type: x.type })).sort((x, y) => x.t - y.t)
     : []);
+  // Alcohol log entries: { t, type, units }. Units are standard drinks (10 g alcohol).
+  const DRINKS = {
+    beer: { emoji: '🍺', label: 'Bira', csv: 'bira' },
+    wine: { emoji: '🍷', label: 'Şarap', csv: 'sarap' },
+    other: { emoji: '🥃', label: 'Diğer', csv: 'diger' },
+  };
+  const DEFAULT_UNITS = { beer: 1.3, wine: 1.4, other: 1 };
+  const posNum = (v, def) => (Number.isFinite(v) && v > 0 ? v : def);
+  function unitMap(m) {
+    const o = m && typeof m === 'object' ? m : {};
+    return { beer: posNum(o.beer, DEFAULT_UNITS.beer), wine: posNum(o.wine, DEFAULT_UNITS.wine), other: posNum(o.other, DEFAULT_UNITS.other) };
+  }
+  function drinkList(a, units) {
+    return Array.isArray(a)
+      ? a.filter((x) => x && Number.isFinite(x.t) && DRINKS[x.type])
+        .map((x) => ({ t: x.t, type: x.type, units: posNum(x.units, units[x.type]) })).sort((x, y) => x.t - y.t)
+      : [];
+  }
   const nums = (a) => (Array.isArray(a) ? a.filter(Number.isFinite).sort((x, y) => x - y) : []);
   // Tag maps are { "<timestamp>": ["triggerId", ...] }.
   function tagMap(m) {
@@ -624,6 +676,7 @@
 
   // Normalise any stored or imported object into the app's state shape.
   function sanitize(d) {
+    const drinkUnits = unitMap(d.drinkUnits);
     return {
       product: d.product === 'cigarette' ? 'cigarette' : 'iqos',
       entries: nums(d.entries),
@@ -634,6 +687,9 @@
       packSize: Number.isFinite(d.packSize) && d.packSize > 0 ? d.packSize : 20,
       resisted: nums(d.resisted),
       nrt: nrtList(d.nrt),
+      drinks: drinkList(d.drinks, drinkUnits),
+      drinkUnits,
+      alcFreeGoal: Number.isInteger(d.alcFreeGoal) && d.alcFreeGoal >= 0 && d.alcFreeGoal <= 7 ? d.alcFreeGoal : 3,
       tags: tagMap(d.tags),
       rtags: tagMap(d.rtags),
       triggers: triggerList(d.triggers),
@@ -787,6 +843,7 @@
 
     renderSince(now);
     renderNrt(now);
+    renderDrinks(now);
     renderHours(now);
 
     $('statYesterday').textContent = yesterday;
@@ -862,6 +919,7 @@
       ...state.entries.filter(inDay).map((t) => ({ kind: 'smoke', t })),
       ...state.resisted.filter(inDay).map((t) => ({ kind: 'resisted', t })),
       ...state.nrt.filter((x) => inDay(x.t)).map((x) => ({ kind: 'nrt', t: x.t, type: x.type })),
+      ...state.drinks.filter((x) => inDay(x.t)).map((x) => ({ kind: 'drink', t: x.t, type: x.type, units: x.units })),
     ].sort((a, b) => b.t - a.t);
     const list = $('entries');
     list.innerHTML = '';
@@ -870,14 +928,17 @@
       return;
     }
     if (isSpreadDay(day0)) list.innerHTML = '<li class="empty">~ Bu günün saatleri tahmini, eşit dağıtılmış. Saat bazlı analizlere katılmaz.</li>';
-    for (const { kind, t, type } of items) {
+    for (const { kind, t, type, units } of items) {
       const li = document.createElement('li');
       const main = document.createElement('span');
       main.className = 'main';
-      const emojis = kind === 'nrt' ? '' : tagsFor(kind, t).map((id) => triggerById(id)?.emoji || '').join('');
+      const emojis = kind === 'nrt' || kind === 'drink' ? '' : tagsFor(kind, t).map((id) => triggerById(id)?.emoji || '').join('');
       if (kind === 'nrt') {
         li.className = 'aux';
         main.innerHTML = `${fmtTime(t)}<span class="what">${NRT[type].emoji} ${NRT[type].label}</span>`;
+      } else if (kind === 'drink') {
+        li.className = 'aux';
+        main.innerHTML = `${fmtTime(t)}<span class="what">${DRINKS[type].emoji} ${DRINKS[type].label} · ${fmt1(units)} birim</span>`;
       } else if (kind === 'smoke') {
         const idx = state.entries.indexOf(t);
         const prev = idx > 0 ? state.entries[idx - 1] : null;
@@ -928,9 +989,10 @@
   const tagStore = (kind) => (kind === 'smoke' ? state.tags : state.rtags);
   const tagsFor = (kind, t) => (tagStore(kind)[String(t)] || []).filter((id) => triggerById(id));
   function removeItem(kind, t, type) {
-    if (kind === 'nrt') {
-      const j = state.nrt.findIndex((x) => x.t === t && (type == null || x.type === type));
-      if (j >= 0) state.nrt.splice(j, 1);
+    if (kind === 'nrt' || kind === 'drink') {
+      const arr = kind === 'nrt' ? state.nrt : state.drinks;
+      const j = arr.findIndex((x) => x.t === t && (type == null || x.type === type));
+      if (j >= 0) arr.splice(j, 1);
       return;
     }
     const arr = kind === 'smoke' ? state.entries : state.resisted;
@@ -992,6 +1054,50 @@
   $('patchBtn').onclick = () => addNrt(patchOnSince() != null ? 'patch_off' : 'patch_on');
   document.querySelectorAll('[data-nrt]').forEach((b) => { b.onclick = () => addNrt(b.dataset.nrt); });
 
+  // ---------- alcohol ----------
+  // Drinks after midnight but before wake-up belong to the previous evening.
+  const eveningOf = (t) => startOfDay(t - toMin(state.wake) * 60000);
+  const drinksOn = (day0) => state.drinks.filter((x) => eveningOf(x.t) === day0);
+  const weekStart = (day0) => addDays(day0, -((new Date(day0).getDay() + 6) % 7));
+  const sumUnits = (list) => list.reduce((s, x) => s + x.units, 0);
+
+  function renderDrinks(now = Date.now()) {
+    const tonight = eveningOf(now);
+    const todayList = drinksOn(tonight);
+    $('drinkToday').textContent = todayList.length ? `Bu akşam ${todayList.length} içki · ${fmt1(sumUnits(todayList))} birim` : '';
+    const ws = weekStart(tonight);
+    let free = 0, done = 0, html = '';
+    const week = [];
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(ws, i), list = drinksOn(d);
+      week.push(...list);
+      let cls = '';
+      if (d < tonight) { done++; if (list.length) cls = 'drank'; else { cls = 'free'; free++; } }
+      else if (d === tonight) cls = (list.length ? 'drank' : '') + ' now';
+      html += `<span class="${cls.trim()}">${DAY_NAMES[new Date(d).getDay()]}</span>`;
+    }
+    $('drinkWeekDays').innerHTML = html;
+    const goal = state.alcFreeGoal, left = 7 - done, need = Math.max(0, goal - free);
+    let status;
+    if (!goal) status = '';
+    else if (!need) status = ' · <b>hedefe ulaştın ✓</b>';
+    else if (need > left) status = ' · bu hafta hedefe ulaşılamıyor';
+    else status = ` · hedef için ${need} alkolsüz akşam daha`;
+    $('drinkWeek').innerHTML = `Bu hafta <b>${week.length}</b> içki · <b>${fmt1(sumUnits(week))}</b> birim<br>`
+      + `Alkolsüz akşam <b>${free}</b>${goal ? ` / hedef ${goal}` : ''}${status}`;
+  }
+  function addDrink(type, t = Date.now()) {
+    state.drinks.push({ t, type, units: state.drinkUnits[type] });
+    state.drinks.sort((a, b) => a.t - b.t);
+    lastAdded = { kind: 'drink', t, type };
+    save(); render();
+    if (navigator.vibrate) navigator.vibrate(20);
+    showToast(`${DRINKS[type].emoji} ${DRINKS[type].label} · bu akşam ${drinksOn(eveningOf(t)).length}. içki`, true);
+  }
+  document.querySelectorAll('[data-drink]').forEach((b) => { b.onclick = () => addDrink(b.dataset.drink); });
+  // A drink in the previous 4 hours makes 'Alkol' the suggested trigger for a new cigarette.
+  const drankRecently = (t) => state.drinks.some((x) => x.t <= t && t - x.t <= 4 * 3600000);
+
   // Which triggers led to cigarettes vs resisted cravings over the last 7 days (today included).
   function renderTriggerStats(now) {
     const from = addDays(startOfDay(now), -6);
@@ -1035,8 +1141,13 @@
   let sheet = null; // { kind, t, isNew, selected:Set }
   function openTriggerSheet(kind, t, isNew, sub = '') {
     sheet = { kind, t, isNew, selected: new Set(tagsFor(kind, t)) };
+    let hint = '';
+    if (kind === 'smoke' && isNew && !sheet.selected.size && triggerById('alcohol') && drankRecently(t)) {
+      sheet.selected.add('alcohol');
+      hint = ' · son 4 saatte içki var, Alkol seçili';
+    }
     $('triggerTitle').textContent = kind === 'smoke' ? 'Neden içtin?' : 'Ne tetikledi?';
-    $('triggerSub').textContent = sub || `${fmtTime(t)} · birden fazla seçebilirsin`;
+    $('triggerSub').textContent = (sub || `${fmtTime(t)} · birden fazla seçebilirsin`) + hint;
     $('undoFromSheet').hidden = !isNew;
     renderChips();
     $('triggerDialog').showModal();
@@ -1370,6 +1481,10 @@
     $('minGapInput').value = state.minGap ?? '';
     $('packSizeInput').value = state.packSize;
     $('askTriggerInput').checked = state.askTrigger;
+    $('unitBeer').value = state.drinkUnits.beer;
+    $('unitWine').value = state.drinkUnits.wine;
+    $('unitOther').value = state.drinkUnits.other;
+    $('alcFreeGoalInput').value = state.alcFreeGoal;
     renderTriggerList();
     $('settingsDialog').showModal();
     if (focusTriggers) $('triggerList').scrollIntoView({ block: 'center' });
@@ -1392,6 +1507,14 @@
     save(); render();
     $('settingsDialog').close();
     showToast(state.limit != null ? `Günlük hedef: ${state.limit}` : 'Hedef kaldırıldı', false);
+  };
+  $('saveDrinkSettings').onclick = () => {
+    const u = (id, k) => { const v = Number($(id).value); return Number.isFinite(v) && v > 0 && v <= 10 ? Math.round(v * 10) / 10 : state.drinkUnits[k]; };
+    state.drinkUnits = { beer: u('unitBeer', 'beer'), wine: u('unitWine', 'wine'), other: u('unitOther', 'other') };
+    const g = Math.floor(Number($('alcFreeGoalInput').value));
+    if (Number.isFinite(g) && g >= 0 && g <= 7) state.alcFreeGoal = g;
+    save(); render();
+    showToast('Alkol ayarları kaydedildi. Yeni birimler bundan sonraki kayıtlara uygulanır.', false);
   };
   $('exportBtn').onclick = () => {
     const blob = new Blob([JSON.stringify({ app: 'smoke-tracker', version: 1, ...state }, null, 2)], { type: 'application/json' });
@@ -1421,7 +1544,7 @@
   };
   $('resetBtn').onclick = () => {
     if (!confirm('Tüm kayıtlar kalıcı olarak silinecek. Emin misin?')) return;
-    state = { ...state, entries: [], resisted: [], tags: {}, rtags: {}, spreadDays: [], experiments: [], nrt: [] };
+    state = { ...state, entries: [], resisted: [], tags: {}, rtags: {}, spreadDays: [], experiments: [], nrt: [], drinks: [] };
     save(); render();
     $('settingsDialog').close();
   };
@@ -1807,12 +1930,14 @@
       ...state.entries.map((t) => ['smoke', t]),
       ...state.resisted.map((t) => ['resisted', t]),
       ...state.nrt.map((x) => ['nrt', x.t, x.type]),
+      ...state.drinks.map((x) => ['drink', x.t, x.type, x.units]),
     ].sort((a, b) => a[1] - b[1]);
-    const rows = [['tarih', 'saat', 'tur', 'tetikleyiciler', 'tahmini_saat', 'unix_ms']];
-    for (const [kind, t, type] of items) {
-      if (kind === 'nrt') { rows.push([toDateInput(t), fmtTime(t), 'nrt_' + type, '', 'hayir', t]); continue; }
+    const rows = [['tarih', 'saat', 'tur', 'tetikleyiciler', 'tahmini_saat', 'unix_ms', 'detay', 'birim']];
+    for (const [kind, t, type, units] of items) {
+      if (kind === 'nrt') { rows.push([toDateInput(t), fmtTime(t), 'nrt_' + type, '', 'hayir', t, '', '']); continue; }
+      if (kind === 'drink') { rows.push([toDateInput(t), fmtTime(t), 'alkol', '', 'hayir', t, DRINKS[type].csv, units]); continue; }
       rows.push([toDateInput(t), fmtTime(t), kind === 'smoke' ? P().csv : 'direnildi',
-        tagsFor(kind, t).map((id) => triggerById(id).label).join('|'), kind === 'smoke' && isSpread(t) ? 'evet' : 'hayir', t]);
+        tagsFor(kind, t).map((id) => triggerById(id).label).join('|'), kind === 'smoke' && isSpread(t) ? 'evet' : 'hayir', t, '', '']);
     }
     const esc = (v) => (/[",\n;]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
     const csv = '﻿' + rows.map((r) => r.map(esc).join(',')).join('\n');
