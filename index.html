@@ -295,6 +295,20 @@
     font-size: 14px; color: var(--muted); line-height: 1.5; cursor: pointer;
   }
   .exp-banner b { color: var(--text); }
+
+  /* small logging cards on Bugün (NRT, alcohol) */
+  .aux-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .aux-btn {
+    background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 4px; font-size: 14px; font-weight: 600; line-height: 1.3; cursor: pointer; touch-action: manipulation;
+  }
+  .aux-btn:active { transform: scale(.97); }
+  .aux-btn .e { display: block; font-size: 20px; margin-bottom: 2px; }
+  .aux-btn.on { border-color: var(--accent); color: var(--accent); }
+  .aux-status { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 10px 0 0; }
+  .aux-status b { color: var(--text); font-weight: 600; }
+  ul.entries li.aux .what { color: var(--muted); margin-left: 8px; font-size: 14px; }
+  ul.entries li.aux .main { cursor: default; }
 </style>
 </head>
 <body>
@@ -331,6 +345,17 @@
   <button class="log-btn" id="logBtn">+ IQOS içtim</button>
   <button class="craving-btn" id="cravingBtn">💪 Canım çekti, içmedim</button>
   <button class="link-btn" id="openBackfill">Kaydetmeyi unuttum, saat seç</button>
+
+  <section class="card">
+    <div class="card-head"><h2>Nikotin desteği</h2><span class="sub" id="nrtToday"></span></div>
+    <div class="aux-row">
+      <button class="aux-btn" id="patchBtn"><span class="e">🩹</span>Bant tak</button>
+      <button class="aux-btn" data-nrt="gum"><span class="e">🍬</span>Sakız</button>
+      <button class="aux-btn" data-nrt="lozenge"><span class="e">💊</span>Pastil</button>
+      <button class="aux-btn" data-nrt="spray"><span class="e">💨</span>Sprey</button>
+    </div>
+    <p class="aux-status" id="patchStatus"></p>
+  </section>
 
   <div class="stats">
     <div class="stat"><div class="v" id="statYesterday">0</div><div class="k">Dün</div><div class="d" id="statDiff"></div></div>
@@ -395,6 +420,7 @@
     <section class="card"><h2>Gün × saat</h2><div id="anHeat"></div></section>
     <section class="card"><h2>Tetikleyici profili</h2><div id="anTriggers"></div></section>
     <section class="card"><h2>Rutin metrikleri</h2><div id="anRoutine"></div></section>
+    <section class="card"><h2>Nikotin desteği</h2><div id="anNrt"></div></section>
     <section class="card">
       <h2>Ham veri</h2>
       <p class="hint" id="anDataNote"></p>
@@ -565,6 +591,17 @@
       log: '+ Sigara içtim', since: 'Son sigaradan beri', next: 'Sonraki sigara için en erken', without: 'sigarasız', title: 'Sigara Sayacı', csv: 'sigara',
     },
   };
+  // Nicotine replacement log entries: { t, type }.
+  const NRT = {
+    patch_on: { emoji: '🩹', label: 'Bant takıldı' },
+    patch_off: { emoji: '🩹', label: 'Bant çıkarıldı' },
+    gum: { emoji: '🍬', label: 'Sakız' },
+    lozenge: { emoji: '💊', label: 'Pastil' },
+    spray: { emoji: '💨', label: 'Sprey' },
+  };
+  const nrtList = (a) => (Array.isArray(a)
+    ? a.filter((x) => x && Number.isFinite(x.t) && NRT[x.type]).map((x) => ({ t: x.t, type: x.type })).sort((x, y) => x.t - y.t)
+    : []);
   const nums = (a) => (Array.isArray(a) ? a.filter(Number.isFinite).sort((x, y) => x - y) : []);
   // Tag maps are { "<timestamp>": ["triggerId", ...] }.
   function tagMap(m) {
@@ -596,6 +633,7 @@
       minGap: Number.isFinite(d.minGap) && d.minGap > 0 ? d.minGap : null,
       packSize: Number.isFinite(d.packSize) && d.packSize > 0 ? d.packSize : 20,
       resisted: nums(d.resisted),
+      nrt: nrtList(d.nrt),
       tags: tagMap(d.tags),
       rtags: tagMap(d.rtags),
       triggers: triggerList(d.triggers),
@@ -748,6 +786,7 @@
     }
 
     renderSince(now);
+    renderNrt(now);
     renderHours(now);
 
     $('statYesterday').textContent = yesterday;
@@ -822,6 +861,7 @@
     const items = [
       ...state.entries.filter(inDay).map((t) => ({ kind: 'smoke', t })),
       ...state.resisted.filter(inDay).map((t) => ({ kind: 'resisted', t })),
+      ...state.nrt.filter((x) => inDay(x.t)).map((x) => ({ kind: 'nrt', t: x.t, type: x.type })),
     ].sort((a, b) => b.t - a.t);
     const list = $('entries');
     list.innerHTML = '';
@@ -830,12 +870,15 @@
       return;
     }
     if (isSpreadDay(day0)) list.innerHTML = '<li class="empty">~ Bu günün saatleri tahmini, eşit dağıtılmış. Saat bazlı analizlere katılmaz.</li>';
-    for (const { kind, t } of items) {
+    for (const { kind, t, type } of items) {
       const li = document.createElement('li');
       const main = document.createElement('span');
       main.className = 'main';
-      const emojis = tagsFor(kind, t).map((id) => triggerById(id)?.emoji || '').join('');
-      if (kind === 'smoke') {
+      const emojis = kind === 'nrt' ? '' : tagsFor(kind, t).map((id) => triggerById(id)?.emoji || '').join('');
+      if (kind === 'nrt') {
+        li.className = 'aux';
+        main.innerHTML = `${fmtTime(t)}<span class="what">${NRT[type].emoji} ${NRT[type].label}</span>`;
+      } else if (kind === 'smoke') {
         const idx = state.entries.indexOf(t);
         const prev = idx > 0 ? state.entries[idx - 1] : null;
         let gapHtml = '';
@@ -849,13 +892,13 @@
         li.className = 'resisted';
         main.innerHTML = `${fmtTime(t)}<span class="what">💪 İçmedim</span>${emojis ? `<span class="tags">${emojis}</span>` : ''}`;
       }
-      main.onclick = () => openTriggerSheet(kind, t, false);
+      if (kind === 'smoke' || kind === 'resisted') main.onclick = () => openTriggerSheet(kind, t, false);
       const del = document.createElement('button');
       del.textContent = '×';
       del.setAttribute('aria-label', `${fmtTime(t)} kaydını sil`);
       del.onclick = () => {
         if (!confirm(`${fmtTime(t)} kaydı silinsin mi?`)) return;
-        removeItem(kind, t);
+        removeItem(kind, t, type);
         save(); render();
       };
       li.append(main, del);
@@ -884,12 +927,70 @@
   const triggerById = (id) => state.triggers.find((x) => x.id === id);
   const tagStore = (kind) => (kind === 'smoke' ? state.tags : state.rtags);
   const tagsFor = (kind, t) => (tagStore(kind)[String(t)] || []).filter((id) => triggerById(id));
-  function removeItem(kind, t) {
+  function removeItem(kind, t, type) {
+    if (kind === 'nrt') {
+      const j = state.nrt.findIndex((x) => x.t === t && (type == null || x.type === type));
+      if (j >= 0) state.nrt.splice(j, 1);
+      return;
+    }
     const arr = kind === 'smoke' ? state.entries : state.resisted;
     const j = arr.lastIndexOf(t);
     if (j >= 0) arr.splice(j, 1);
     delete tagStore(kind)[String(t)];
   }
+
+  let lastAdded = null; // { kind, t, type? } for the toast's undo
+
+  // ---------- nicotine replacement ----------
+  // Patch wear intervals [on, off) built from the on/off log; a patch that is still on runs until now.
+  function patchIntervals(now = Date.now()) {
+    const out = [];
+    let on = null;
+    for (const x of state.nrt) {
+      if (x.type === 'patch_on' && on == null) on = x.t;
+      else if (x.type === 'patch_off' && on != null) { out.push([on, x.t]); on = null; }
+    }
+    if (on != null) out.push([on, Math.max(on, now)]);
+    return out;
+  }
+  const patchOnSince = () => {
+    const last = [...state.nrt].reverse().find((x) => x.type === 'patch_on' || x.type === 'patch_off');
+    return last && last.type === 'patch_on' ? last.t : null;
+  };
+  // A patch day has at least one hour of patch wear inside that calendar day.
+  function isPatchDay(day0) {
+    const day1 = addDays(day0, 1);
+    const ms = patchIntervals().reduce((s, [a, b]) => s + Math.max(0, Math.min(b, day1) - Math.max(a, day0)), 0);
+    return ms >= 3600000;
+  }
+  const nrtCount = (day0, type) => state.nrt.filter((x) => x.type === type && x.t >= day0 && x.t < addDays(day0, 1)).length;
+
+  function renderNrt(now = Date.now()) {
+    const today0 = startOfDay(now);
+    const since = patchOnSince();
+    $('patchBtn').innerHTML = `<span class="e">🩹</span>${since != null ? 'Bandı çıkar' : 'Bant tak'}`;
+    $('patchBtn').classList.toggle('on', since != null);
+    if (since != null) {
+      $('patchStatus').innerHTML = `🩹 Bant <b>takılı</b> · takılma ${startOfDay(since) < today0 ? fmtShort(since) + ' ' : ''}${fmtTime(since)} · <b>${fmtDuration(now - since)}</b>`;
+    } else {
+      const off = [...state.nrt].reverse().find((x) => x.type === 'patch_off');
+      $('patchStatus').innerHTML = 'Bant takılı değil' + (off ? ` · son çıkarma ${startOfDay(off.t) < today0 ? fmtShort(off.t) + ' ' : ''}${fmtTime(off.t)}` : '');
+    }
+    const parts = ['gum', 'lozenge', 'spray'].map((k) => [k, nrtCount(today0, k)]).filter(([, c]) => c)
+      .map(([k, c]) => `${NRT[k].emoji} ${c}`);
+    $('nrtToday').textContent = parts.length ? 'Bugün ' + parts.join(' · ') : '';
+  }
+  function addNrt(type, t = Date.now()) {
+    state.nrt.push({ t, type });
+    state.nrt.sort((a, b) => a.t - b.t);
+    lastAdded = { kind: 'nrt', t, type };
+    save(); render();
+    if (navigator.vibrate) navigator.vibrate(20);
+    const n = ['gum', 'lozenge', 'spray'].includes(type) ? ` · bugün ${nrtCount(startOfDay(t), type)}.` : '';
+    showToast(`${NRT[type].emoji} ${NRT[type].label}${n}`, true);
+  }
+  $('patchBtn').onclick = () => addNrt(patchOnSince() != null ? 'patch_off' : 'patch_on');
+  document.querySelectorAll('[data-nrt]').forEach((b) => { b.onclick = () => addNrt(b.dataset.nrt); });
 
   // Which triggers led to cigarettes vs resisted cravings over the last 7 days (today included).
   function renderTriggerStats(now) {
@@ -1139,7 +1240,6 @@
     return prev == null ? 0 : Math.max(0, state.minGap * 60000 - awakeBetween(prev, t));
   }
 
-  let lastAdded = null; // { kind, t } for the toast's undo
   function afterAdd(kind, t, msg) {
     lastAdded = { kind, t };
     if (navigator.vibrate) navigator.vibrate(30);
@@ -1173,7 +1273,7 @@
     toastTimer = setTimeout(() => $('toast').classList.remove('show'), 5000);
   }
   $('undoBtn').onclick = () => {
-    if (lastAdded) { removeItem(lastAdded.kind, lastAdded.t); lastAdded = null; save(); render(); }
+    if (lastAdded) { removeItem(lastAdded.kind, lastAdded.t, lastAdded.type); lastAdded = null; save(); render(); }
     $('toast').classList.remove('show');
   };
 
@@ -1321,7 +1421,7 @@
   };
   $('resetBtn').onclick = () => {
     if (!confirm('Tüm kayıtlar kalıcı olarak silinecek. Emin misin?')) return;
-    state = { ...state, entries: [], resisted: [], tags: {}, rtags: {}, spreadDays: [], experiments: [] };
+    state = { ...state, entries: [], resisted: [], tags: {}, rtags: {}, spreadDays: [], experiments: [], nrt: [] };
     save(); render();
     $('settingsDialog').close();
   };
@@ -1345,6 +1445,38 @@
     const T = [[1, 12.71], [2, 4.3], [3, 3.18], [4, 2.78], [5, 2.57], [6, 2.45], [7, 2.36], [8, 2.31], [9, 2.26], [10, 2.23], [12, 2.18], [15, 2.13], [20, 2.09], [30, 2.04]];
     for (const [d, v] of T) if (df <= d) return v;
     return 1.96;
+  }
+  // Welch's t-test on two samples. Returns null when either side has fewer than 2 values.
+  function welch(a, b) {
+    if (a.length < 2 || b.length < 2) return null;
+    const diff = mean(a) - mean(b);
+    if (diff === 0) return { diff, sig: false };
+    const va = stdev(a) ** 2 / a.length, vb = stdev(b) ** 2 / b.length, se = Math.sqrt(va + vb);
+    if (se === 0) return { diff, sig: true };
+    const den = va ** 2 / (a.length - 1) + vb ** 2 / (b.length - 1);
+    const df = den > 0 ? (va + vb) ** 2 / den : a.length + b.length - 2;
+    return { diff, sig: Math.abs(diff) / se > tCrit(Math.floor(df)) };
+  }
+  // Two-group comparison for the analysis cards: n, mean ± SD, difference and a cautious verdict.
+  // better: 'down' / 'up' says which direction of (A − B) is good; null for a neutral comparison.
+  function compareBlock({ what, labelA, a, labelB, b, better = null, fmt = (v) => fmtN(v) }) {
+    const row = (label, v) => `<tr><td>${label}</td><td>${v.length}</td><td>${v.length ? fmt(mean(v)) : '–'}</td><td>${v.length > 1 ? '±' + fmtN(stdev(v)) : '–'}</td></tr>`;
+    const minN = Math.min(a.length, b.length);
+    let verdict, cls = 'neutral';
+    if (minN < 3) {
+      verdict = `Henüz yeterli veri yok. İki tarafta da en az 3 gün gerek (şu an ${a.length} ve ${b.length}).`;
+    } else {
+      const w = welch(a, b);
+      if (w.diff === 0) verdict = 'Fark yok.';
+      else if (w.sig) {
+        verdict = `Fark anlamlı görünüyor (yaklaşık %95)${minN < 7 ? ', ama veri az, dikkatli yorumla' : ''}.`;
+        if (better) cls = (better === 'down' ? w.diff < 0 : w.diff > 0) ? 'good' : 'bad';
+      } else verdict = 'Fark gürültü içinde. Şimdilik bir ilişki söylenemez.';
+    }
+    const diff = a.length && b.length ? fmtSigned(mean(a) - mean(b)) : '–';
+    return `<div class="tbl-wrap"><table class="tbl"><tr><th>${what}</th><th>Gün</th><th>Ort.</th><th>Sapma</th></tr>`
+      + `${row(labelA, a)}${row(labelB, b)}<tr class="sum"><td>Fark</td><td></td><td>${diff}</td><td></td></tr></table></div>`
+      + `<p class="verdict ${cls}">${verdict}</p>`;
   }
   const fmtN = (x, digits = 1) => (x == null || !Number.isFinite(x) ? '–' : (Math.round(x * 10 ** digits) / 10 ** digits).toLocaleString('tr-TR'));
   const fmtSigned = (x, digits = 1) => {
@@ -1448,6 +1580,7 @@
     renderHeatmap(days, today0);
     renderTriggerProfile(days);
     renderRoutine(days, prevDays, today0);
+    renderNrtCard(days, today0);
     const spreadN = days.filter((d) => d.spread).length;
     const span = Math.round((today0 - trackedStart()) / DAY) + 1;
     $('anDataNote').innerHTML = `Toplam ${state.entries.length} ${P().unit} ve ${state.resisted.length} direnilen istek, ${span} gün.`
@@ -1651,13 +1784,33 @@
       + `<p class="an-foot">İlk 2s: ilk ${P().abl} sonraki 2 saatte içilen, ilki dahil. 21+: 21:00 sonrası. Oto: Alışkanlık ve Sıkılma etiketli ${P().units}ın etiketlilere oranı. p50: gün içi medyan ara, dk. * Bugün devam ediyor, ortalamalara katılmaz. ~ saatleri tahmini gün. Fark: yeşil iyi yönde.</p>`;
   }
 
+  function renderNrtCard(days, today0) {
+    const box = $('anNrt');
+    if (!state.nrt.length) {
+      box.innerHTML = '<p class="hint" style="margin:0">Bant, sakız veya pastil kaydettikçe burada bantlı ve bantsız günler karşılaştırılacak.</p>';
+      return;
+    }
+    const comp = days.filter((d) => d.day0 < today0);
+    const on = comp.filter((d) => isPatchDay(d.day0)).map((d) => d.count);
+    const off = comp.filter((d) => !isPatchDay(d.day0)).map((d) => d.count);
+    const per = (type) => mean(comp.map((d) => nrtCount(d.day0, type)));
+    box.innerHTML = compareBlock({ what: `${cap(P().unit)} / gün`, labelA: '🩹 Bantlı gün', a: on, labelB: 'Bantsız gün', b: off, better: 'down' })
+      + `<p class="an-text">Günde ort. 🍬 ${fmtN(per('gum'))} sakız · 💊 ${fmtN(per('lozenge'))} pastil · 💨 ${fmtN(per('spray'))} sprey</p>`
+      + '<p class="an-foot">Bantlı gün: o gün en az 1 saat bant takılı. Sadece tamamlanmış günler sayılır.</p>';
+  }
+
   // ---------- CSV export ----------
   $('csvBtn').onclick = () => {
     const spread = new Map();
     const isSpread = (t) => { const d = startOfDay(t); if (!spread.has(d)) spread.set(d, isSpreadDay(d)); return spread.get(d); };
-    const items = [...state.entries.map((t) => ['smoke', t]), ...state.resisted.map((t) => ['resisted', t])].sort((a, b) => a[1] - b[1]);
+    const items = [
+      ...state.entries.map((t) => ['smoke', t]),
+      ...state.resisted.map((t) => ['resisted', t]),
+      ...state.nrt.map((x) => ['nrt', x.t, x.type]),
+    ].sort((a, b) => a[1] - b[1]);
     const rows = [['tarih', 'saat', 'tur', 'tetikleyiciler', 'tahmini_saat', 'unix_ms']];
-    for (const [kind, t] of items) {
+    for (const [kind, t, type] of items) {
+      if (kind === 'nrt') { rows.push([toDateInput(t), fmtTime(t), 'nrt_' + type, '', 'hayir', t]); continue; }
       rows.push([toDateInput(t), fmtTime(t), kind === 'smoke' ? P().csv : 'direnildi',
         tagsFor(kind, t).map((id) => triggerById(id).label).join('|'), kind === 'smoke' && isSpread(t) ? 'evet' : 'hayir', t]);
     }
@@ -1694,18 +1847,8 @@
     if (exp.length < 2 || base.length < 2) {
       return { cls: 'neutral', early: true, text: `Henüz erken: deneyde ${exp.length}, öncesinde ${base.length} tamamlanmış gün var. İki tarafta da en az 2 gün gerek.` };
     }
-    const a = exp.map((x) => x.v), b = base.map((x) => x.v);
-    const diff = mean(a) - mean(b);
+    const { diff, sig } = welch(exp.map((x) => x.v), base.map((x) => x.v));
     if (diff === 0) return { cls: 'neutral', text: 'Fark yok.' };
-    const va = stdev(a) ** 2 / a.length, vb = stdev(b) ** 2 / b.length, se = Math.sqrt(va + vb);
-    let sig;
-    if (se === 0) {
-      sig = true;
-    } else {
-      const den = va ** 2 / (a.length - 1) + vb ** 2 / (b.length - 1);
-      const df = den > 0 ? (va + vb) ** 2 / den : a.length + b.length - 2;
-      sig = Math.abs(diff) / se > tCrit(Math.floor(df));
-    }
     const good = isGood(e.metric, diff);
     if (sig) return good ? { cls: 'good', text: 'Anlamlı iyileşme (yaklaşık %95 güven).' } : { cls: 'bad', text: 'Anlamlı kötüleşme (yaklaşık %95 güven).' };
     return { cls: 'neutral', text: `${good ? 'İyileşme' : 'Kötüleşme'} yönünde ama fark gürültü içinde. Daha fazla gün gerek ya da etki küçük.` };
@@ -1825,7 +1968,7 @@
   let lastDay = dayKey(Date.now());
   setInterval(() => {
     const k = dayKey(Date.now());
-    if (k !== lastDay) { lastDay = k; render(); } else renderSince();
+    if (k !== lastDay) { lastDay = k; render(); } else { renderSince(); renderNrt(); }
   }, 15000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { state = load(); render(); } });
 
