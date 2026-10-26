@@ -865,7 +865,7 @@
       askTrigger: d.askTrigger !== false,
       experiments: Array.isArray(d.experiments)
         ? d.experiments.filter((e) => e && typeof e.name === 'string' && Number.isFinite(e.start) && Number.isFinite(e.days)
-          && ['count', 'first2h', 'late', 'auto', 'p50', 'first'].includes(e.metric))
+          && ['count', 'first2h', 'late', 'auto', 'p50', 'first', 'drinks', 'alcfree', 'gum', 'irritability', 'sleep'].includes(e.metric))
           .map((e) => ({ id: String(e.id || e.start), name: e.name, metric: e.metric, start: e.start, days: e.days }))
         : [],
       // Days whose times were estimated by "Günü düzenle" (YYYY-MM-DD).
@@ -2069,6 +2069,14 @@
   function dayMetrics(day0) {
     const ts = smokesOn(day0);
     const m = { day0, count: ts.length, spread: isSpreadDay(day0, ts), first: null, first2h: null, late: null, auto: null, p50: null, gaps: [] };
+    // Alcohol metrics start on the evening of the first logged drink; earlier days were simply not logged.
+    const drinkStart = state.drinks.length ? eveningOf(state.drinks[0].t) : Infinity;
+    const dl = drinksOn(day0), c = checkinOf(day0);
+    m.drinks = day0 >= drinkStart ? dl.length : null;
+    m.alcfree = day0 >= drinkStart ? (dl.length ? 0 : 100) : null;
+    m.gum = nrtCount(day0, 'gum');
+    m.irritability = c ? c.irritability : null;
+    m.sleep = c ? c.sleep : null;
     if (m.spread) return m;
     m.gaps = ts.slice(1).map((t, i) => awakeBetween(ts[i], t) / 60000);
     m.p50 = m.gaps.length ? median(m.gaps) : null;
@@ -2090,8 +2098,14 @@
     auto: { get label() { return 'Otomatik ' + P().unit + ' payı'; }, better: 'down', fmt: (v) => (v == null ? '–' : '%' + fmtN(v, 0)), unit: ' puan' },
     p50: { label: 'Medyan ara', better: 'up', fmt: (v) => (v == null ? '–' : fmtN(v, 0) + ' dk'), unit: ' dk' },
     first: { get label() { return 'İlk ' + P().unit + ' saati'; }, better: 'up', fmt: fmtClock, unit: ' dk' },
+    drinks: { label: 'Günlük içki', better: 'down', fmt: (v) => fmtN(v), unit: '', digits: 1 },
+    alcfree: { label: 'Alkolsüz gün payı', better: 'up', fmt: (v) => (v == null ? '–' : '%' + fmtN(v, 0)), unit: ' puan' },
+    gum: { label: 'Nikotin sakızı / gün', better: null, fmt: (v) => fmtN(v), unit: '', digits: 1 },
+    irritability: { label: 'Sinirlilik (1–5)', better: 'down', fmt: (v) => fmtN(v), unit: '', digits: 1 },
+    sleep: { label: 'Uyku puanı (1–5)', better: 'up', fmt: (v) => fmtN(v), unit: '', digits: 1 },
   };
-  const isGood = (key, diff) => (METRICS[key].better === 'down' ? diff < 0 : diff > 0);
+  // null for metrics without a good direction (e.g. NRT gum while starting replacement therapy).
+  const isGood = (key, diff) => (METRICS[key].better == null ? null : METRICS[key].better === 'down' ? diff < 0 : diff > 0);
 
   const svg = (w, h, inner) => `<svg viewBox="0 0 ${w} ${h}" width="100%" style="display:block;overflow:visible" aria-hidden="true">${inner}</svg>`;
   function rangeDays(n, today0) {
@@ -2495,6 +2509,9 @@
     const { diff, sig } = welch(exp.map((x) => x.v), base.map((x) => x.v));
     if (diff === 0) return { cls: 'neutral', text: 'Fark yok.' };
     const good = isGood(e.metric, diff);
+    if (good == null) {
+      return sig ? { cls: 'neutral', text: 'Anlamlı fark (yaklaşık %95 güven).' } : { cls: 'neutral', text: 'Fark gürültü içinde. Daha fazla gün gerek ya da etki küçük.' };
+    }
     if (sig) return good ? { cls: 'good', text: 'Anlamlı iyileşme (yaklaşık %95 güven).' } : { cls: 'bad', text: 'Anlamlı kötüleşme (yaklaşık %95 güven).' };
     return { cls: 'neutral', text: `${good ? 'İyileşme' : 'Kötüleşme'} yönünde ama fark gürültü içinde. Daha fazla gün gerek ya da etki küçük.` };
   }
@@ -2523,7 +2540,7 @@
     const today0 = startOfDay(Date.now());
     const sel = $('expMetric');
     if (!sel.options.length) {
-      sel.innerHTML = Object.entries(METRICS).map(([k, m]) => `<option value="${k}">${m.label} (${m.better === 'down' ? 'azalsın' : 'artsın'})</option>`).join('');
+      sel.innerHTML = Object.entries(METRICS).map(([k, m]) => `<option value="${k}">${m.label}${m.better ? ` (${m.better === 'down' ? 'azalsın' : 'artsın'})` : ''}</option>`).join('');
     }
     if (!$('expStart').value) $('expStart').value = toDateInput(today0);
     const list = $('expList');
@@ -2539,7 +2556,7 @@
       const dayN = Math.round((today0 - e.start) / DAY) + 1;
       const stTxt = st === 'planned' ? 'başlamadı' : st === 'running' ? `gün ${dayN}/${e.days}, devam ediyor` : 'bitti';
       const diff = mb != null && me != null ? me - mb : null;
-      const digits = e.metric === 'count' || e.metric === 'first2h' || e.metric === 'late' ? 1 : 0;
+      const digits = e.metric === 'count' || e.metric === 'first2h' || e.metric === 'late' ? 1 : (M.digits ?? 0);
       const sdFmt = (list) => (list.length > 1 ? '±' + fmtN(stdev(list.map((x) => x.v)), digits) : '–');
       return `<section class="card" data-id="${e.id}">
         <h2>${escapeHtml(e.name)}</h2>
@@ -2549,7 +2566,7 @@
           <tr><th></th><th>Gün</th><th>Ortalama</th><th>Sapma</th></tr>
           <tr><td>Önce</td><td>${base.length}</td><td>${M.fmt(mb)}</td><td>${sdFmt(base)}</td></tr>
           <tr><td>Deney</td><td>${exp.length}</td><td>${M.fmt(me)}</td><td>${sdFmt(exp)}</td></tr>
-          <tr class="sum"><td>Fark</td><td></td><td class="${diff ? (isGood(e.metric, diff) ? 'good' : 'bad') : ''}">${diff == null ? '–' : fmtSigned(diff, digits) + M.unit}</td><td></td></tr>
+          <tr class="sum"><td>Fark</td><td></td><td class="${diff && isGood(e.metric, diff) != null ? (isGood(e.metric, diff) ? 'good' : 'bad') : ''}">${diff == null ? '–' : fmtSigned(diff, digits) + M.unit}</td><td></td></tr>
         </table></div>
         <p class="verdict ${v.cls}">${st === 'running' && !v.early ? 'Ara sonuç: ' : ''}${v.text}</p>
         <div class="row">
