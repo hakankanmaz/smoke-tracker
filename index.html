@@ -334,6 +334,27 @@
   .quit-add { display: grid; grid-template-columns: 52px 1fr; gap: 8px; margin: 8px 0 12px; }
   .quit-add input[type=date] { grid-column: 1 / -1; }
   .quit-add .btn { grid-column: 1 / -1; }
+  .ci { margin-bottom: 14px; }
+  .ci-l { font-size: 14px; margin-bottom: 6px; }
+  .ci-l span { color: var(--muted); font-size: 12px; margin-left: 6px; }
+  .ci-s { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .ci-s.three { grid-template-columns: repeat(3, 1fr); }
+  .ci-s button {
+    background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 0; font-size: 15px; font-weight: 600; cursor: pointer; touch-action: manipulation;
+  }
+  .ci-s button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  #ciNote {
+    width: 100%; min-height: 64px; resize: vertical; background: var(--bg); color: var(--text);
+    border: 1px solid var(--line); border-radius: 12px; padding: 10px; font: inherit; font-size: 15px; margin-bottom: 14px;
+  }
+  .ci-sum { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 14px; }
+  .ci-sum b { font-variant-numeric: tabular-nums; }
+  .ci-note { color: var(--muted); font-size: 13px; margin: 8px 0 0; font-style: italic; }
+  .exp-banner.prompt { border-color: var(--accent); color: var(--text); }
+  .spark { width: 70px; height: 22px; display: block; margin-left: auto; }
+  .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+  .spark circle { fill: var(--accent); }
   .field-trio { display: flex; gap: 10px; }
   .field-trio .field { flex: 1; min-width: 0; }
 </style>
@@ -353,6 +374,7 @@
 
   <div id="view-today" class="view">
   <div class="exp-banner" id="expBanner" hidden></div>
+  <div class="exp-banner prompt" id="checkinPrompt" hidden>🌙 Akşam oldu. Günü <b>30 saniyede</b> değerlendir.</div>
 
   <div class="hero">
     <div class="label">Bugün içilen</div>
@@ -393,6 +415,11 @@
     </div>
     <div class="wk" id="drinkWeekDays"></div>
     <p class="aux-status" id="drinkWeek"></p>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Günlük kontrol</h2><span class="sub" id="checkinDay"></span></div>
+    <div id="checkinBody"></div>
   </section>
 
   <section class="card" id="quitCard">
@@ -464,6 +491,7 @@
     <section class="card"><h2>Tetikleyici profili</h2><div id="anTriggers"></div></section>
     <section class="card"><h2>Rutin metrikleri</h2><div id="anRoutine"></div></section>
     <section class="card"><h2>Nikotin desteği</h2><div id="anNrt"></div></section>
+    <section class="card"><h2>Günlük kontrol</h2><div id="anCheckin"></div></section>
     <section class="card">
       <h2>Ham veri</h2>
       <p class="hint" id="anDataNote"></p>
@@ -538,6 +566,21 @@
   <div class="row" style="justify-content: space-between; margin-top: 8px;">
     <button class="link-btn" id="undoFromSheet">Yanlışlıkla bastım, geri al</button>
     <button class="link-btn" id="editTriggerList">Listeyi düzenle</button>
+  </div>
+</dialog>
+
+<dialog id="checkinDialog">
+  <h2>Günlük kontrol</h2>
+  <p class="sheet-sub" id="checkinSub"></p>
+  <div id="ciScales"></div>
+  <div class="ci">
+    <div class="ci-l">Öksürük</div>
+    <div class="ci-s three" id="ciCough"></div>
+  </div>
+  <textarea id="ciNote" maxlength="500" placeholder="Not (isteğe bağlı)"></textarea>
+  <div class="row">
+    <button class="btn" data-close>Vazgeç</button>
+    <button class="btn primary" id="saveCheckin">Kaydet</button>
   </div>
 </dialog>
 
@@ -696,6 +739,28 @@
     return a.filter((q) => q && typeof q.label === 'string' && q.label.trim() && validDate(q.since))
       .map((q) => ({ id: String(q.id || q.label), label: q.label.slice(0, 30), emoji: typeof q.emoji === 'string' ? q.emoji.slice(0, 4) : '', since: q.since }));
   }
+  // Daily check-ins keyed by evening day (YYYY-MM-DD): 1–5 scales, cough 0|1|2 and a note.
+  const CHECKIN_SCALES = [
+    { k: 'mood', label: 'Ruh hali', short: 'Ruh hali', hint: '1 kötü · 5 çok iyi', emoji: '🙂', better: 'up' },
+    { k: 'irritability', label: 'Sinirlilik', short: 'Sinirlilik', hint: '1 sakin · 5 çok sinirli', emoji: '😤', better: 'down' },
+    { k: 'sleep', label: 'Uyku (dün gece)', short: 'Uyku', hint: '1 kötü · 5 çok iyi', emoji: '😴', better: 'up' },
+    { k: 'energy', label: 'Enerji', short: 'Enerji', hint: '1 düşük · 5 yüksek', emoji: '⚡', better: 'up' },
+  ];
+  const COUGH = ['Yok', 'Az', 'Çok'];
+  const scale5 = (v) => (Number.isInteger(v) && v >= 1 && v <= 5 ? v : null);
+  function checkinMap(m) {
+    const out = {};
+    if (!m || typeof m !== 'object') return out;
+    for (const [k, v] of Object.entries(m)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !v || typeof v !== 'object') continue;
+      const c = {
+        mood: scale5(v.mood), irritability: scale5(v.irritability), sleep: scale5(v.sleep), energy: scale5(v.energy),
+        cough: [0, 1, 2].includes(v.cough) ? v.cough : null, note: typeof v.note === 'string' ? v.note.slice(0, 500) : '',
+      };
+      if (c.mood != null || c.irritability != null || c.sleep != null || c.energy != null || c.cough != null || c.note) out[k] = c;
+    }
+    return out;
+  }
   const nums = (a) => (Array.isArray(a) ? a.filter(Number.isFinite).sort((x, y) => x - y) : []);
   // Tag maps are { "<timestamp>": ["triggerId", ...] }.
   function tagMap(m) {
@@ -732,6 +797,7 @@
       drinks: drinkList(d.drinks, drinkUnits),
       drinkUnits,
       quits: quitList(d.quits),
+      checkins: checkinMap(d.checkins),
       alcFreeGoal: Number.isInteger(d.alcFreeGoal) && d.alcFreeGoal >= 0 && d.alcFreeGoal <= 7 ? d.alcFreeGoal : 3,
       tags: tagMap(d.tags),
       rtags: tagMap(d.rtags),
@@ -888,6 +954,7 @@
     renderNrt(now);
     renderDrinks(now);
     renderQuits(now);
+    renderCheckin(now);
     renderHours(now);
 
     $('statYesterday').textContent = yesterday;
@@ -1203,6 +1270,57 @@
       box.append(row);
     });
   }
+
+  // ---------- daily check-in ----------
+  // After midnight but before wake-up, the check-in still belongs to the previous evening.
+  const checkinKey = (now = Date.now()) => toDateInput(eveningOf(now));
+  function renderCheckin(now = Date.now()) {
+    const key = checkinKey(now), c = state.checkins[key];
+    const h = new Date(now).getHours();
+    $('checkinPrompt').hidden = !!c || !(h >= 20 || eveningOf(now) < startOfDay(now));
+    $('checkinDay').textContent = eveningOf(now) < startOfDay(now) ? 'dün akşam için' : '';
+    if (!c) {
+      $('checkinBody').innerHTML = '<p class="hint" style="margin:0 0 12px">Bugün henüz değerlendirmedin. Ruh hali, sinirlilik, uyku, enerji ve öksürük, 30 saniye.</p>'
+        + '<button class="btn primary" style="width:100%" data-checkin>Değerlendir</button>';
+      return;
+    }
+    const parts = CHECKIN_SCALES.filter((x) => c[x.k] != null).map((x) => `<span>${x.emoji} ${x.short} <b>${c[x.k]}</b></span>`);
+    if (c.cough != null) parts.push(`<span>🫁 Öksürük <b>${COUGH[c.cough].toLocaleLowerCase('tr')}</b></span>`);
+    $('checkinBody').innerHTML = `<div class="ci-sum">${parts.join('')}</div>`
+      + (c.note ? `<p class="ci-note">“${escapeHtml(c.note)}”</p>` : '')
+      + '<button class="link-btn" style="display:block;margin:8px 0 0" data-checkin>Düzenle</button>';
+  }
+  let ciDraft = null, ciKey = null;
+  function openCheckin() {
+    ciKey = checkinKey();
+    ciDraft = { mood: null, irritability: null, sleep: null, energy: null, cough: null, note: '', ...(state.checkins[ciKey] || {}) };
+    $('checkinSub').textContent = new Date(parseDay(ciKey)).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const btns = (k, n, labels) => Array.from({ length: n }, (_, i) => {
+      const v = labels ? i : i + 1;
+      return `<button data-k="${k}" data-v="${v}" class="${ciDraft[k] === v ? 'on' : ''}">${labels ? labels[i] : v}</button>`;
+    }).join('');
+    $('ciScales').innerHTML = CHECKIN_SCALES.map((x) => `<div class="ci"><div class="ci-l">${x.emoji} ${x.label}<span>${x.hint}</span></div><div class="ci-s">${btns(x.k, 5)}</div></div>`).join('');
+    $('ciCough').innerHTML = btns('cough', 3, COUGH);
+    $('ciNote').value = ciDraft.note || '';
+    $('checkinDialog').showModal();
+  }
+  $('checkinDialog').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-k]');
+    if (!b) return;
+    const k = b.dataset.k, v = Number(b.dataset.v);
+    ciDraft[k] = ciDraft[k] === v ? null : v; // tap again to clear
+    b.parentElement.querySelectorAll('button').forEach((x) => x.classList.toggle('on', Number(x.dataset.v) === ciDraft[k]));
+  });
+  $('saveCheckin').onclick = () => {
+    ciDraft.note = $('ciNote').value.trim();
+    const clean = checkinMap({ [ciKey]: ciDraft })[ciKey];
+    if (clean) state.checkins[ciKey] = clean; else delete state.checkins[ciKey];
+    save(); render();
+    $('checkinDialog').close();
+    showToast('Günlük kontrol kaydedildi', false);
+  };
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-checkin]')) openCheckin(); });
+  $('checkinPrompt').onclick = openCheckin;
 
   // Which triggers led to cigarettes vs resisted cravings over the last 7 days (today included).
   function renderTriggerStats(now) {
@@ -1661,7 +1779,7 @@
   };
   $('resetBtn').onclick = () => {
     if (!confirm('Tüm kayıtlar kalıcı olarak silinecek. Emin misin?')) return;
-    state = { ...state, entries: [], resisted: [], tags: {}, rtags: {}, spreadDays: [], experiments: [], nrt: [], drinks: [] };
+    state = { ...state, entries: [], resisted: [], tags: {}, rtags: {}, spreadDays: [], experiments: [], nrt: [], drinks: [], checkins: {} };
     save(); render();
     $('settingsDialog').close();
   };
@@ -1821,6 +1939,7 @@
     renderTriggerProfile(days);
     renderRoutine(days, prevDays, today0);
     renderNrtCard(days, today0);
+    renderCheckinCard(days, prevDays);
     const spreadN = days.filter((d) => d.spread).length;
     const span = Math.round((today0 - trackedStart()) / DAY) + 1;
     $('anDataNote').innerHTML = `Toplam ${state.entries.length} ${P().unit} ve ${state.resisted.length} direnilen istek, ${span} gün.`
@@ -2039,6 +2158,36 @@
       + '<p class="an-foot">Bantlı gün: o gün en az 1 saat bant takılı. Sadece tamamlanmış günler sayılır.</p>';
   }
 
+  const checkinOf = (day0) => state.checkins[toDateInput(day0)] || null;
+  function sparkline(vals, lo, hi) {
+    const W = 70, H = 22, n = vals.length;
+    const pts = vals.map((v, i) => (v == null ? null : [n > 1 ? (i / (n - 1)) * (W - 4) + 2 : W / 2, H - 2 - ((v - lo) / (hi - lo)) * (H - 4)]));
+    const segs = [];
+    let cur = [];
+    for (const p of pts) { if (p) cur.push(p); else if (cur.length) { segs.push(cur); cur = []; } }
+    if (cur.length) segs.push(cur);
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true">${segs.map((sg) => (sg.length > 1 ? `<polyline points="${sg.map((p) => p.join(',')).join(' ')}"/>` : '')).join('')}`
+      + `${pts.filter(Boolean).map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.6"/>`).join('')}</svg>`;
+  }
+  function renderCheckinCard(days, prevDays) {
+    const box = $('anCheckin');
+    const cur = days.map((d) => checkinOf(d.day0)), prev = prevDays.map((d) => checkinOf(d.day0));
+    const n = cur.filter(Boolean).length;
+    if (!n) {
+      box.innerHTML = '<p class="hint" style="margin:0">Bu dönemde günlük kontrol yok. Bugün ekranından akşamları 30 saniyede doldurabilirsin.</p>';
+      return;
+    }
+    const rows = [...CHECKIN_SCALES, { k: 'cough', short: 'Öksürük', emoji: '🫁', better: 'down', lo: 0, hi: 2 }].map((x) => {
+      const vals = cur.map((c) => (c ? c[x.k] : null));
+      const a = mean(vals.filter((v) => v != null)), b = mean(prev.map((c) => (c ? c[x.k] : null)).filter((v) => v != null));
+      const diff = a != null && b != null ? a - b : null;
+      const cls = diff == null || Math.abs(diff) < 0.05 ? '' : (x.better === 'down' ? diff < 0 : diff > 0) ? 'good' : 'bad';
+      return `<tr><td>${x.emoji} ${x.short}</td><td>${fmtN(a)}</td><td>${fmtN(b)}</td><td class="${cls}">${fmtSigned(diff)}</td><td>${sparkline(vals, x.lo ?? 1, x.hi ?? 5)}</td></tr>`;
+    }).join('');
+    box.innerHTML = `<div class="tbl-wrap"><table class="tbl"><tr><th>Ölçüm</th><th>Ort.</th><th>Önceki</th><th>Fark</th><th>Gün gün</th></tr>${rows}</table></div>`
+      + `<p class="an-foot">${n}/${days.length} günde kontrol var. Ölçekler 1–5, öksürük 0 yok · 1 az · 2 çok. Fark: yeşil iyi yönde.</p>`;
+  }
+
   // ---------- CSV export ----------
   $('csvBtn').onclick = () => {
     const spread = new Map();
@@ -2049,12 +2198,21 @@
       ...state.nrt.map((x) => ['nrt', x.t, x.type]),
       ...state.drinks.map((x) => ['drink', x.t, x.type, x.units]),
     ].sort((a, b) => a[1] - b[1]);
-    const rows = [['tarih', 'saat', 'tur', 'tetikleyiciler', 'tahmini_saat', 'unix_ms', 'detay', 'birim']];
+    const cols = ['tarih', 'saat', 'tur', 'tetikleyiciler', 'tahmini_saat', 'unix_ms', 'detay', 'birim', 'ruh_hali', 'sinirlilik', 'uyku', 'enerji', 'oksuruk', 'not'];
+    const rows = [cols];
+    const add = (o) => rows.push(cols.map((c) => o[c] ?? ''));
     for (const [kind, t, type, units] of items) {
-      if (kind === 'nrt') { rows.push([toDateInput(t), fmtTime(t), 'nrt_' + type, '', 'hayir', t, '', '']); continue; }
-      if (kind === 'drink') { rows.push([toDateInput(t), fmtTime(t), 'alkol', '', 'hayir', t, DRINKS[type].csv, units]); continue; }
-      rows.push([toDateInput(t), fmtTime(t), kind === 'smoke' ? P().csv : 'direnildi',
-        tagsFor(kind, t).map((id) => triggerById(id).label).join('|'), kind === 'smoke' && isSpread(t) ? 'evet' : 'hayir', t, '', '']);
+      const base = { tarih: toDateInput(t), saat: fmtTime(t), tahmini_saat: 'hayir', unix_ms: t };
+      if (kind === 'nrt') add({ ...base, tur: 'nrt_' + type });
+      else if (kind === 'drink') add({ ...base, tur: 'alkol', detay: DRINKS[type].csv, birim: units });
+      else {
+        add({ ...base, tur: kind === 'smoke' ? P().csv : 'direnildi', tetikleyiciler: tagsFor(kind, t).map((id) => triggerById(id).label).join('|'),
+          tahmini_saat: kind === 'smoke' && isSpread(t) ? 'evet' : 'hayir' });
+      }
+    }
+    // One row per check-in day, after the timed rows.
+    for (const [day, c] of Object.entries(state.checkins).sort()) {
+      add({ tarih: day, tur: 'checkin', unix_ms: parseDay(day), ruh_hali: c.mood, sinirlilik: c.irritability, uyku: c.sleep, enerji: c.energy, oksuruk: c.cough, not: c.note });
     }
     const esc = (v) => (/[",\n;]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
     const csv = '﻿' + rows.map((r) => r.map(esc).join(',')).join('\n');
