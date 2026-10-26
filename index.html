@@ -355,6 +355,9 @@
   .spark { width: 70px; height: 22px; display: block; margin-left: auto; }
   .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; }
   .spark circle { fill: var(--accent); }
+  .rel + .rel { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .rel h3 { font-size: 14px; margin: 0 0 2px; }
+  .rel .q { color: var(--muted); font-size: 12px; margin: 0; line-height: 1.4; }
   .field-trio { display: flex; gap: 10px; }
   .field-trio .field { flex: 1; min-width: 0; }
 </style>
@@ -493,6 +496,7 @@
     <section class="card"><h2>Rutin metrikleri</h2><div id="anRoutine"></div></section>
     <section class="card"><h2>Nikotin desteği</h2><div id="anNrt"></div></section>
     <section class="card"><h2>Günlük kontrol</h2><div id="anCheckin"></div></section>
+    <section class="card"><h2>İlişkiler</h2><div id="anRelations"></div></section>
     <section class="card">
       <h2>Ham veri</h2>
       <p class="hint" id="anDataNote"></p>
@@ -2065,6 +2069,7 @@
     renderRoutine(days, prevDays, today0);
     renderNrtCard(days, today0);
     renderCheckinCard(days, prevDays);
+    renderRelations(days, today0);
     const spreadN = days.filter((d) => d.spread).length;
     const span = Math.round((today0 - trackedStart()) / DAY) + 1;
     $('anDataNote').innerHTML = `Toplam ${state.entries.length} ${P().unit} ve ${state.resisted.length} direnilen istek, ${span} gün.`
@@ -2312,6 +2317,48 @@
     }).join('');
     box.innerHTML = `<div class="tbl-wrap"><table class="tbl"><tr><th>Ölçüm</th><th>Ort.</th><th>Önceki</th><th>Fark</th><th>Gün gün</th></tr>${rows}</table></div>`
       + `<p class="an-foot">${n}/${days.length} günde kontrol var. Ölçekler 1–5, öksürük 0 yok · 1 az · 2 çok. Fark: yeşil iyi yönde.</p>`;
+  }
+
+  // Day-level comparisons between IQOS, alcohol, sleep, irritability and patch use in the selected period.
+  function renderRelations(days, today0) {
+    const comp = days.filter((d) => d.day0 < today0);
+    const ci = (day0, k) => { const c = checkinOf(day0); return c ? c[k] : null; };
+    const block = (title, q, opts) => `<div class="rel"><h3>${title}</h3><p class="q">${q}</p>${compareBlock(opts)}</div>`;
+    const unit = cap(P().unit);
+    const parts = [];
+
+    // 1) Sticks on drinking days vs alcohol-free days.
+    parts.push(block(`🍺 Alkol ve ${P().name}`, `İçki içilen günlerde ${P().unit} sayısı alkolsüz günlerden farklı mı?`, {
+      what: `${unit} / gün`, labelA: 'İçilen gün', a: comp.filter((d) => drinksOn(d.day0).length).map((d) => d.count),
+      labelB: 'Alkolsüz gün', b: comp.filter((d) => !drinksOn(d.day0).length).map((d) => d.count),
+    }));
+
+    // 2) Sleep score vs the previous evening's drinking.
+    const sleepDays = days.filter((d) => ci(d.day0, 'sleep') != null);
+    const after = sleepDays.filter((d) => drinksOn(addDays(d.day0, -1)).length);
+    const unitsBefore = mean(after.map((d) => sumUnits(drinksOn(addDays(d.day0, -1)))));
+    parts.push(block('😴 Önceki akşam alkol ve uyku', `İçki içilen akşamın ertesi uyku puanı (1–5).${after.length ? ` O akşamlar ort. ${fmtN(unitsBefore)} birim.` : ''}`, {
+      what: 'Uyku', labelA: 'İçkili akşam sonrası', a: after.map((d) => ci(d.day0, 'sleep')),
+      labelB: 'Alkolsüz akşam sonrası', b: sleepDays.filter((d) => !drinksOn(addDays(d.day0, -1)).length).map((d) => ci(d.day0, 'sleep')),
+    }));
+
+    // 3) Irritability on high vs low IQOS days (split at the period median).
+    const irr = comp.filter((d) => ci(d.day0, 'irritability') != null);
+    const med = median(irr.map((d) => d.count));
+    const hi = irr.filter((d) => d.count > med), lo = irr.filter((d) => d.count <= med);
+    parts.push(block(`😤 Sinirlilik ve ${P().name} sayısı`, irr.length ? `Günler dönemin medyanına (${fmtN(med)} ${P().unit}) göre ikiye ayrıldı.` : 'Sinirlilik puanı olan günler gerekli.', {
+      what: 'Sinirlilik', labelA: `Çok (> ${fmtN(med)})`, a: hi.map((d) => ci(d.day0, 'irritability')),
+      labelB: `Az (≤ ${fmtN(med)})`, b: lo.map((d) => ci(d.day0, 'irritability')),
+    }));
+
+    // 4) Irritability on patch days vs other days.
+    parts.push(block('🩹 Sinirlilik ve bant', 'Bant takılı günlerde sinirlilik farklı mı?', {
+      what: 'Sinirlilik', labelA: 'Bantlı gün', a: irr.filter((d) => isPatchDay(d.day0)).map((d) => ci(d.day0, 'irritability')),
+      labelB: 'Bantsız gün', b: irr.filter((d) => !isPatchDay(d.day0)).map((d) => ci(d.day0, 'irritability')),
+    }));
+
+    $('anRelations').innerHTML = parts.join('')
+      + '<p class="an-foot">Gün düzeyinde karşılaştırma, Welch t-testi. Bunlar ilişki, neden-sonuç değil. Az veriyle yanıltıcı olabilir, en az 3’er gün olmadan sonuç gösterilmez. Bugün tamamlanmadığı için sayılmaz, uyku puanı hariç.</p>';
   }
 
   // ---------- CSV export ----------
