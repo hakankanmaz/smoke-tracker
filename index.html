@@ -442,6 +442,11 @@
     <div><div class="v" id="packDays"></div><div class="k" id="packSub"></div></div>
   </div>
 
+  <div class="pack" id="moneyCard">
+    <div class="ico">💶</div>
+    <div><div class="v" id="moneyMain"></div><div class="k" id="moneySub"></div></div>
+  </div>
+
   <section class="card">
     <h2>Son 14 gün</h2>
     <div class="chart" id="chart"></div>
@@ -643,6 +648,21 @@
     <button class="btn primary" id="saveTaper">Planı kaydet</button>
   </div>
   <hr>
+  <h3 class="section" id="moneySection">Para</h3>
+  <div class="field-pair">
+    <div class="field"><label for="packPriceInput">Paket fiyatı (€)</label><input type="number" id="packPriceInput" min="0" max="100" step="0.1" inputmode="decimal" placeholder="Örn. 6"></div>
+    <div class="field"><label for="baselineInput" id="baselineLabel">Önceki tüketim (günde)</label><input type="number" id="baselineInput" min="1" max="100" inputmode="numeric"></div>
+  </div>
+  <div class="field-trio">
+    <div class="field"><label for="priceBeer">🍺 €</label><input type="number" id="priceBeer" min="0" max="100" step="0.1" inputmode="decimal"></div>
+    <div class="field"><label for="priceWine">🍷 €</label><input type="number" id="priceWine" min="0" max="100" step="0.1" inputmode="decimal"></div>
+    <div class="field"><label for="priceOther">🥃 €</label><input type="number" id="priceOther" min="0" max="100" step="0.1" inputmode="decimal"></div>
+  </div>
+  <p class="hint">Tasarruf, takibe başladığın günden bu yana önceki tüketimine göre hesaplanır. İçki fiyatları haftalık alkol harcaması için.</p>
+  <div class="row">
+    <button class="btn primary" id="saveMoney">Kaydet</button>
+  </div>
+  <hr>
   <h3 class="section">Bırakılanlar</h3>
   <p class="hint">Bıraktığın her şey için temiz gün sayacı. Tarihi değiştirirsen sayaç o günden başlar.</p>
   <div id="quitEditList"></div>
@@ -793,6 +813,9 @@
   }
   // A manual change of today's limit while a plan is on: { day: YYYY-MM-DD, value }.
   const overrideOf = (o) => (o && validDate(o.day) && (o.value === null || intIn(o.value, 0, 100, -1) >= 0) ? { day: o.day, value: o.value } : null);
+  // Prices in euro; null means not set.
+  const price = (v) => (Number.isFinite(v) && v > 0 && v <= 1000 ? v : null);
+  const priceMap = (m) => { const o = m && typeof m === 'object' ? m : {}; return { beer: price(o.beer), wine: price(o.wine), other: price(o.other) }; };
   const nums = (a) => (Array.isArray(a) ? a.filter(Number.isFinite).sort((x, y) => x - y) : []);
   // Tag maps are { "<timestamp>": ["triggerId", ...] }.
   function tagMap(m) {
@@ -830,6 +853,9 @@
       drinkUnits,
       quits: quitList(d.quits),
       taper: taperOf(d.taper),
+      packPrice: price(d.packPrice),
+      drinkPrice: priceMap(d.drinkPrice),
+      baselinePerDay: intIn(d.baselinePerDay, 1, 100, 20),
       limitOverride: overrideOf(d.limitOverride),
       checkins: checkinMap(d.checkins),
       alcFreeGoal: Number.isInteger(d.alcFreeGoal) && d.alcFreeGoal >= 0 && d.alcFreeGoal <= 7 ? d.alcFreeGoal : 3,
@@ -1044,6 +1070,7 @@
     }
     $('statAvg7').textContent = n ? (Math.round((sum / n) * 10) / 10).toLocaleString('tr-TR') : '–';
     renderPack(n ? sum / n : null, n);
+    renderMoney(now);
 
     // Chart: last 14 days including today.
     const days = [];
@@ -1278,6 +1305,37 @@
   document.querySelectorAll('[data-drink]').forEach((b) => { b.onclick = () => addDrink(b.dataset.drink); });
   // A drink in the previous 4 hours makes 'Alkol' the suggested trigger for a new cigarette.
   const drankRecently = (t) => state.drinks.some((x) => x.t <= t && t - x.t <= 4 * 3600000);
+
+  // ---------- money ----------
+  const fmtEur = (x) => `${x < 0 ? '−' : ''}${Math.abs(x).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: Math.abs(x) >= 100 ? 0 : 2 })} €`;
+  // Sticks not smoked vs the baseline, from `from` to now; today counts in proportion to the awake time so far.
+  function sticksSaved(from, now = Date.now()) {
+    const today0 = startOfDay(now), counts = countsByDay();
+    let saved = 0;
+    for (let d = from; d < today0; d = addDays(d, 1)) saved += state.baselinePerDay - (counts.get(dayKey(d)) || 0);
+    if (from <= today0) saved += state.baselinePerDay * (awakeElapsed(now) / awakeLen()) - (counts.get(dayKey(today0)) || 0);
+    return saved;
+  }
+  function renderMoney(now = Date.now()) {
+    const today0 = startOfDay(now);
+    const week = weekStart(today0);
+    const drinkWeek = state.drinks.filter((x) => eveningOf(x.t) >= weekStart(eveningOf(now)));
+    const priced = drinkWeek.filter((x) => state.drinkPrice[x.type] != null);
+    const drinkSpend = priced.reduce((s, x) => s + state.drinkPrice[x.type], 0);
+    const drinkTxt = priced.length ? `Alkol bu hafta ${fmtEur(drinkSpend)}${priced.length < drinkWeek.length ? ' (fiyatı girilmeyenler hariç)' : ''}` : '';
+    if (state.packPrice == null) {
+      $('moneyMain').textContent = 'Tasarrufu görmek için paket fiyatını gir';
+      $('moneySub').textContent = ['Ayarlar → Para. Dokun.', drinkTxt].filter(Boolean).join(' · ');
+      return;
+    }
+    const perStick = state.packPrice / state.packSize;
+    const start = trackedStart();
+    const days = Math.round((today0 - start) / 86400000) + 1;
+    const total = sticksSaved(start, now) * perStick, thisWeek = sticksSaved(Math.max(week, start), now) * perStick;
+    $('moneyMain').textContent = total >= 0 ? `≈ ${fmtEur(total)} tasarruf` : `${fmtEur(-total)} fazla harcama`;
+    $('moneySub').textContent = [`Bu hafta ${fmtEur(thisWeek)} · ${days} günde, günde ${state.baselinePerDay} ${P().unit} başlangıca göre`, drinkTxt].filter(Boolean).join(' · ');
+  }
+  $('moneyCard').onclick = () => { openSettings(); $('moneySection').scrollIntoView({ block: 'start' }); };
 
   // ---------- quit streaks ----------
   const MILESTONES = [[7, 0, '1 hafta'], [14, 0, '2 hafta'], [0, 1, '1 ay'], [0, 3, '3 ay'], [0, 6, '6 ay'], [0, 12, '1 yıl']];
@@ -1789,6 +1847,12 @@
     $('unitOther').value = state.drinkUnits.other;
     $('alcFreeGoalInput').value = state.alcFreeGoal;
     renderQuitEditor();
+    $('packPriceInput').value = state.packPrice ?? '';
+    $('baselineInput').value = state.baselinePerDay;
+    $('baselineLabel').textContent = `Önceki tüketim (günde ${P().unit})`;
+    $('priceBeer').value = state.drinkPrice.beer ?? '';
+    $('priceWine').value = state.drinkPrice.wine ?? '';
+    $('priceOther').value = state.drinkPrice.other ?? '';
     $('newQuitDate').value = toDateInput(Date.now());
     $('newQuitDate').max = toDateInput(Date.now());
     renderTriggerList();
@@ -1863,6 +1927,14 @@
     const t0 = startOfDay(Date.now());
     syncLimitField();
     showToast(tp.enabled ? `Plan kaydedildi. Bugünkü hedef: ${limitFor(t0) ?? '–'}` : 'Plan kapatıldı', false);
+  };
+  $('saveMoney').onclick = () => {
+    const num = (id) => { const v = $(id).value.trim(); return v === '' ? null : price(Math.round(Number(v) * 100) / 100); };
+    state.packPrice = num('packPriceInput');
+    state.drinkPrice = { beer: num('priceBeer'), wine: num('priceWine'), other: num('priceOther') };
+    state.baselinePerDay = intIn(Math.floor(Number($('baselineInput').value)), 1, 100, state.baselinePerDay);
+    save(); render();
+    showToast('Fiyatlar kaydedildi', false);
   };
   $('addQuit').onclick = () => {
     const label = $('newQuitLabel').value.trim(), since = $('newQuitDate').value;
